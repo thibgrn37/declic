@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Ctx, type AppCtx, type PlayRequest, type Tab } from './app/ctx';
 import { Icon } from './components/ui';
 import { ensureWeek } from './engine/engine';
-import { Store, freshState, type SaveStatus } from './state/store';
+import { appStore, freshState, type SaveStatus } from './state/store';
+import { cloudConfigured } from './state/cloud';
+import { SignInBanner } from './components/Sync';
 import type { State } from './state/types';
 import { Carnet } from './screens/Carnet';
 import { JourJ } from './screens/JourJ';
@@ -17,7 +19,7 @@ const TABS: [Tab, string][] = [['today', 'Aujourd’hui'], ['programme', 'Progra
 type Speaker = { speak(t: string, o?: object): Promise<void>; stop(): void };
 
 export default function App() {
-  const store = useMemo(() => new Store(), []);
+  const store = appStore;
   const ref = useRef<State>(store.readLocal() || freshState());
   const [, setTick] = useState(0);
   const [status, setStatus] = useState<SaveStatus>('chargement');
@@ -30,9 +32,11 @@ export default function App() {
 
   useEffect(() => {
     store.onStatus = setStatus;
+    // Version plus récente venue d'un autre appareil (connexion, retour sur l'appli, retour du réseau).
+    store.onRemote = (remote) => { ref.current = remote; rerender(); };
+    // connect() envoie lui-même les données locales vers le compte si elles sont plus récentes.
     store.connect().then((remote) => {
       if (remote) ref.current = remote;
-      else if (ref.current.profile) store.save(ref.current); // premier envoi des données locales vers le compte
       rerender();
     });
     const w = window as unknown as { claude?: { use(n: string): Promise<Speaker | null> } };
@@ -87,7 +91,7 @@ export default function App() {
   };
 
   if (!s.profile || s.assessments.length === 0) {
-    return <Ctx.Provider value={ctx}><Onboarding /></Ctx.Provider>;
+    return <Ctx.Provider value={ctx}>{cloudConfigured && <SignInBanner />}<Onboarding /></Ctx.Provider>;
   }
 
   return (
