@@ -6,6 +6,7 @@ import type { Profile } from '../state/types';
 import { useApp } from '../app/ctx';
 import { Header, Medal, Radar } from '../components/ui';
 import { ProfileForm, SkillBars } from './Onboarding';
+import { InstallCard, SyncCard } from '../components/Sync';
 
 const STATUS: Record<string, string> = {
   chargement: 'Chargement…', compte: 'Enregistré dans ton compte', appareil: 'Enregistré sur cet appareil',
@@ -134,6 +135,8 @@ export function Progres() {
           <div className="row"><button className="btn danger" onClick={() => { replace(freshState()); setConfirmReset(false); }}>Oui, tout effacer</button><button className="btn ghost" onClick={() => setConfirmReset(false)}>Annuler</button></div>
         ) : <button className="btn ghost" onClick={() => setConfirmReset(true)}>Réinitialiser</button>}
       </div>
+      <SyncCard />
+      <InstallCard />
       <p className="savestate">{STATUS[app.status]}</p>
     </>
   );
