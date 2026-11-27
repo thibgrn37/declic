@@ -1,0 +1,83 @@
+// Liaison intervals.icu côté appli : clé personnelle, puis récupération automatique des nouvelles séances.
+// Ne fonctionne que sur la version hébergée (fonction serveur /api/intervals).
+import { useEffect } from 'react';
+import { addDays, todayKey } from '../state/dates';
+import { mergeWorkouts } from '../engine/training';
+import type { State, Workout } from '../state/types';
+import type { IcuReply } from '../server/intervals';
+
+const API = '/api/intervals';
+const SYNC_EVERY_MS = 10 * 60 * 1000;
+
+/** Vrai sur la version hébergée ; faux dans l'artifact claude.ai et en fichier local. */
+export const intervalsAvailable = () =>
+  typeof location !== 'undefined' && location.protocol.startsWith('http') && !(window as unknown as { claude?: unknown }).claude;
+
+/** Ajoute les séances reçues sans doublon. Retourne le nombre de nouvelles. */
+export function absorb(s: State, list: Workout[]): number {
+  const known = new Set((s.workouts || []).map((w) => w.id));
+  const r = mergeWorkouts(s.workouts || [], list.filter((w) => !known.has(w.id)));
+  s.workouts = r.list;
+  return r.added;
+}
+
+export type SyncResult = { added: number } | { error: string };
+
+async function fetchWorkouts(apiKey: string, oldest: string, sport?: string): Promise<IcuReply> {
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey, oldest, sport }) });
+  return r.json() as Promise<IcuReply>;
+}
+
+const profileSport = (s: State) => (s.profile?.sport ? s.profile.sport[0].toUpperCase() + s.profile.sport.slice(1) : undefined);
+
+/** Première connexion : vérifie la clé et récupère les 30 derniers jours. */
+export async function connectIntervals(apiKey: string, s: State, update: (fn: (s: State) => void) => void): Promise<SyncResult> {
+  try {
+    const r = await fetchWorkouts(apiKey, addDays(todayKey(), -30), profileSport(s));
+    if (!r.ok) return { error: r.error };
+    let added = 0;
+    update((x) => { added = absorb(x, r.workouts); x.intervals = { apiKey, lastSync: Date.now() }; });
+    return { added };
+  } catch {
+    return { error: 'intervals.icu injoignable pour le moment.' };
+  }
+}
+
+/** Récupère les séances depuis la dernière synchro (3 jours de marge pour une montre synchronisée en retard). */
+export async function syncIntervals(s: State, update: (fn: (s: State) => void) => void): Promise<SyncResult> {
+  const link = s.intervals;
+  if (!link) return { error: 'intervals.icu n’est pas connecté' };
+  const since = link.lastSync ? new Date(link.lastSync - 3 * 86400e3) : new Date(Date.now() - 30 * 86400e3);
+  const p = (n: number) => String(n).padStart(2, '0');
+  const oldest = `${since.getFullYear()}-${p(since.getMonth() + 1)}-${p(since.getDate())}`;
+  try {
+    const r = await fetchWorkouts(link.apiKey, oldest, profileSport(s));
+    if (!r.ok) {
+      if (r.status === 401) update((x) => { if (x.intervals) x.intervals.error = r.error; });
+      return { error: r.error };
+    }
+    let added = 0;
+    update((x) => { added = absorb(x, r.workouts); if (x.intervals) { x.intervals.lastSync = Date.now(); delete x.intervals.error; } });
+    return { added };
+  } catch {
+    return { error: 'intervals.icu injoignable pour le moment.' };
+  }
+}
+
+/** Synchro automatique : au chargement, puis au retour sur l'appli, au plus toutes les 10 minutes. */
+export function useIntervalsAutoSync(get: () => State, update: (fn: (s: State) => void) => void, ready: boolean) {
+  useEffect(() => {
+    if (!ready || !intervalsAvailable()) return;
+    let busy = false;
+    const run = async () => {
+      const s = get();
+      if (busy || !s.intervals || s.intervals.error || Date.now() - (s.intervals.lastSync || 0) < SYNC_EVERY_MS) return;
+      busy = true;
+      try { await syncIntervals(s, update); } finally { busy = false; }
+    };
+    void run();
+    const onVis = () => { if (document.visibilityState === 'visible') void run(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [ready, get, update]);
+}

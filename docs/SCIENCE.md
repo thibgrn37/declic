@@ -22,6 +22,8 @@ Déclic calcule la charge d'une séance avec la méthode **session-RPE** (Foster
 
 Les rapprochements affichés (concentration avec ou sans séance Déclic la veille, effort selon le sommeil, concentration selon le stress) ne s'affichent qu'avec au moins 3 séances de chaque côté et un écart d'au moins 0,4 point. Ce sont des tendances personnelles, pas des preuves de cause à effet.
 
+Le **petit débrief** d'une séance (effort, concentration, confiance, ce qui a gêné) adapte le programme : un obstacle signalé fait proposer, le jour même ou le lendemain, une séance ciblée (le stress mène à la respiration, le doute à l'imagerie, etc.), avec la séance prévue en alternative. Il pèse aussi sur la semaine suivante (obstacle −8 points sur la compétence liée, concentration ou confiance notées 1 ou 2 : −4), moins qu'un débrief complet (−12). Ce sont des choix de conception, pas des résultats d'études.
+
 ## Limites
 
 - Le **bilan** de Déclic est une auto-évaluation écrite pour l'appli. Il couvre des dimensions mesurées par les questionnaires de compétences mentales en sport, mais ce n'est pas un test validé ni un outil de diagnostic.

@@ -59,6 +59,17 @@ export const ISSUES: Record<IssueKey, string> = {
   confiance: 'J’ai douté de moi',
 };
 
+/** Libellés courts, pour le petit débrief d'entraînement. */
+export const ISSUES_SHORT: Record<IssueKey, string> = {
+  stress: 'Stress', pensees: 'Pensées négatives', attention: 'Concentration', motivation: 'Motivation', confiance: 'Doute',
+};
+
+/** Séance d'entraînement d'aujourd'hui ou d'hier dont le petit débrief signale un obstacle. */
+export function recentWorkoutIssue(s: State, day = todayKey()) {
+  return (s.workouts || []).filter((w) => w.issue && (w.date === day || w.date === addDays(day, -1)))
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+}
+
 /** Compétences classées de la plus faible à la plus forte, en tenant compte des débriefs récents. */
 export function priorities(s: State, day = todayKey()): { skill: SkillKey; score: number; fromDebrief: boolean }[] {
   const a = latestAssessment(s);
@@ -77,6 +88,15 @@ export function priorities(s: State, day = todayKey()): { skill: SkillKey; score
       base[k] -= 6; // repéré dans le texte : poids plus faible qu'un obstacle choisi
       flagged.add(k);
     }
+  }
+  // Petits débriefs d'entraînement : signal plus faible qu'un débrief complet, mais plus fréquent.
+  for (const w of s.workouts || []) {
+    if (diffDays(w.date, day) > 21) continue;
+    const hits: [SkillKey, number][] = [];
+    if (w.issue) hits.push([ISSUE_SKILL[w.issue], 8]);
+    if (w.focus && w.focus <= 2) hits.push(['concentration', 4]);
+    if (w.confidence && w.confidence <= 2) hits.push(['confiance', 4]);
+    for (const [k, n] of hits) { base[k] -= n; flagged.add(k); }
   }
   return (Object.keys(base) as SkillKey[])
     .map((k) => ({ skill: k, score: base[k], fromDebrief: flagged.has(k) }))
@@ -197,6 +217,21 @@ export function suggestToday(s: State, day = todayKey()): Suggestion | null {
       reason: `${hard.date === day ? 'Grosse séance aujourd’hui' : 'Grosse séance hier'} (${hard.sport}, effort ${hard.rpe}/10) : une respiration lente aide à récupérer. Ton programme reprend demain.`,
       alternative: nextIdx >= 0 ? { techId: plan.slots[nextIdx].techId, slotIndex: nextIdx } : undefined,
     };
+  }
+  const flaggedW = doneToday ? undefined : recentWorkoutIssue(s, day);
+  if (flaggedW) {
+    const target = techFor(ISSUE_SKILL[flaggedW.issue!], []);
+    const reason = `À ton entraînement ${flaggedW.date === day ? 'd’aujourd’hui' : 'd’hier'} (${flaggedW.sport}), tu as noté : ${ISSUES_SHORT[flaggedW.issue!].toLowerCase()}. On travaille ce point tant que c’est frais.`;
+    if (nextIdx >= 0 && plan.slots[nextIdx].techId === target) {
+      return { techId: target, level: levelOf(s, target), source: 'plan', title: 'Séance du jour', reason, slotIndex: nextIdx };
+    }
+    const noSession = !s.sessions.some((x) => x.techId === target && x.date >= flaggedW.date);
+    if (noSession) {
+      return {
+        techId: target, level: levelOf(s, target), source: 'libre', title: 'Ciblée après ton entraînement', reason,
+        alternative: nextIdx >= 0 ? { techId: plan.slots[nextIdx].techId, slotIndex: nextIdx } : undefined,
+      };
+    }
   }
   if (nextIdx >= 0) {
     const sl = plan.slots[nextIdx];

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mergeWorkouts, parseDuration, parseGarminCsv, sessionLoad, trainingInsights, weeklyTraining } from './training';
-import { initialLevels, scoreAssessment, suggestToday } from './engine';
+import { initialLevels, priorities, scoreAssessment, suggestToday } from './engine';
+import { pendingDebriefs } from './training';
 import { freshState } from '../state/store';
 import { addDays, todayKey } from '../state/dates';
 import { ITEMS } from '../content/assessment';
@@ -84,5 +85,28 @@ describe('lien avec le mental', () => {
     const ins = trainingInsights(s, t);
     expect(ins[0].text).toContain('4,0/5');
     expect(ins[0].tone).toBe('plus');
+  });
+  it('liste les séances à débriefer puis les retire une fois notées', () => {
+    const s = setup();
+    const t = todayKey();
+    s.workouts = [squash({ date: t }), squash({ date: addDays(t, -10) })];
+    expect(pendingDebriefs(s, t)).toHaveLength(1);
+    s.workouts[0].rpe = 7; // effort venu de la montre : le débrief reste proposé
+    expect(pendingDebriefs(s, t)).toHaveLength(1);
+    s.workouts[0].debriefed = true;
+    expect(pendingDebriefs(s, t)).toHaveLength(0);
+  });
+  it('le petit débrief oriente la séance suivante et les priorités', () => {
+    const s = setup();
+    const t = todayKey();
+    const before = priorities(s, t).find((p) => p.skill === 'stress')!.score;
+    s.workouts = [squash({ date: addDays(t, -1), rpe: 6, issue: 'stress' })];
+    expect(priorities(s, t).find((p) => p.skill === 'stress')!.score).toBe(before - 8);
+    const sug = suggestToday(s, t)!;
+    expect(sug.techId).toBe('respiration');
+    expect(sug.reason).toContain('stress');
+    // Une fois la séance ciblée faite, le plan reprend.
+    s.sessions.push({ date: t, techId: 'respiration', level: 1, rating: 4, useful: 4, note: '', source: 'libre' });
+    expect(suggestToday(s, t)?.source).toBe('plan');
   });
 });

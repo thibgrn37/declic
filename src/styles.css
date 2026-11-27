@@ -193,3 +193,5 @@ nav.tabs button.on { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .orb { transition: none !important; } .result { animation: none; } }
 @media (max-width: 380px) { h1 { font-size: 1.8rem; } .scale5 button { font-size: .66rem; } }
 .savestate { font-size: .78rem; color: var(--muted); }
+details.card > summary { cursor: pointer; }
+details.card:not([open]) { gap: 0; }

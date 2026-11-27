@@ -84,7 +84,11 @@ export interface Workout {
   /** Confiance pendant la séance, 1 à 5. */
   confidence?: number;
   note?: string;
-  source: 'manuel' | 'garmin';
+  /** Ce qui a gêné mentalement pendant la séance (petit débrief). */
+  issue?: IssueKey;
+  source: 'manuel' | 'garmin' | 'intervals';
+  /** Petit débrief fait (même si rien n'a gêné). */
+  debriefed?: boolean;
 }
 
 export interface Slot {
@@ -117,4 +121,6 @@ export interface State {
   ambient?: AmbientKind;
   reminders?: ReminderSettings;
   workouts?: Workout[];
+  /** Liaison intervals.icu : clé API personnelle, heure de la dernière synchro (ms). */
+  intervals?: { apiKey: string; lastSync: number; error?: string };
 }
