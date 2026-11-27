@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { addDays, todayKey } from '../state/dates';
 import { mergeWorkouts } from '../engine/training';
 import type { State, Workout } from '../state/types';
-import type { IcuReply } from '../server/intervals';
+import type { IcuReply } from '../../api/intervals';
 
 const API = '/api/intervals';
 const SYNC_EVERY_MS = 10 * 60 * 1000;
@@ -24,8 +24,15 @@ export function absorb(s: State, list: Workout[]): number {
 export type SyncResult = { added: number } | { error: string };
 
 async function fetchWorkouts(apiKey: string, oldest: string, sport?: string): Promise<IcuReply> {
-  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey, oldest, sport }) });
-  return r.json() as Promise<IcuReply>;
+  let r: Response;
+  try {
+    r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey, oldest, sport }) });
+  } catch {
+    return { ok: false, error: 'Pas de connexion internet.', status: 0 };
+  }
+  // Une réponse qui n'est pas du JSON vient de notre serveur, pas d'intervals.icu : on le dit clairement.
+  const data = (await r.json().catch(() => null)) as IcuReply | null;
+  return data ?? { ok: false, error: `Le relais de Déclic ne répond pas (erreur ${r.status}).`, status: r.status };
 }
 
 const profileSport = (s: State) => (s.profile?.sport ? s.profile.sport[0].toUpperCase() + s.profile.sport.slice(1) : undefined);
@@ -38,8 +45,8 @@ export async function connectIntervals(apiKey: string, s: State, update: (fn: (s
     let added = 0;
     update((x) => { added = absorb(x, r.workouts); x.intervals = { apiKey, lastSync: Date.now() }; });
     return { added };
-  } catch {
-    return { error: 'intervals.icu injoignable pour le moment.' };
+  } catch (e) {
+    return { error: `Connexion impossible (${(e as Error).message}).` };
   }
 }
 
