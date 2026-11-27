@@ -1,0 +1,8 @@
+/* Compte en ligne et installation (version hébergée) */
+input[type=email], input[type=password] { width: 100%; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+.seg button { text-align: center; }
+.okmsg { color: var(--good); }
+.errmsg { color: var(--warn); }
+.app.banner { padding-bottom: 0; padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+.app.banner + .app { padding-top: 12px; }
+.app.banner .top p { margin: 0; }

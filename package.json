@@ -14,6 +14,7 @@
     "build:artifact": "npm run build:single && node scripts/to-artifact.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.119.0",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
