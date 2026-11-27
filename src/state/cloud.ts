@@ -135,3 +135,19 @@ export function cancelRecovery() {
   setRecovery(false);
 }
 
+
+/** Explique en français une erreur de lecture ou d'écriture des données en ligne. */
+export function explainError(e: unknown): string {
+  const x = (e ?? {}) as { code?: string; message?: string; details?: string; hint?: string };
+  const msg = [x.code, x.message, x.details].filter(Boolean).join(' · ') || String(e);
+  if (x.code === 'PGRST205' || x.code === '42P01' || /could not find the table|does not exist/i.test(msg))
+    return 'La table « declic_state » n’existe pas dans Supabase. Exécute le script supabase/schema.sql dans SQL Editor (étape 1.3 du guide).';
+  if (x.code === '42501' || /row-level security|permission denied/i.test(msg))
+    return 'Supabase refuse l’accès à la table. Relance le script supabase/schema.sql dans SQL Editor pour créer les règles d’accès.';
+  if (x.code === '23503' || /foreign key/i.test(msg))
+    return 'Ce compte n’existe plus dans Supabase. Déconnecte-toi puis reconnecte-toi.';
+  if (/invalid api key|no api key|jwt|apikey/i.test(msg))
+    return 'La clé Supabase configurée dans Vercel est refusée. Vérifie VITE_SUPABASE_ANON_KEY, puis redéploie.';
+  if (/failed to fetch|network|load failed/i.test(msg)) return 'Pas de connexion internet. Nouvel essai au retour du réseau.';
+  return 'Erreur Supabase : ' + msg;
+}

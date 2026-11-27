@@ -94,7 +94,7 @@ export function SyncCard() {
       {acc === undefined ? <p className="small muted">Chargement…</p> : acc ? (
         <>
           <p className="small muted">Connecté avec <b>{acc.email}</b>. Tes données se synchronisent entre ton téléphone et ton ordinateur.</p>
-          {status === 'erreur' && <p className="small errmsg" role="status">La dernière synchronisation a échoué. Tes données sont gardées sur cet appareil.</p>}
+          {status === 'erreur' && <p className="small errmsg" role="status">La dernière synchronisation a échoué. Tes données sont gardées sur cet appareil.{appStore.lastError && <><br />{appStore.lastError}</>}</p>}
           {status === 'compte' && <p className="small okmsg">À jour en ligne.</p>}
           <div className="row">
             <button className="btn soft" disabled={busy || status === 'enregistrement'} onClick={async () => { setBusy(true); await appStore.syncNow().catch(() => {}); setBusy(false); }}>Synchroniser maintenant</button>
