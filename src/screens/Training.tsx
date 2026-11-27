@@ -73,8 +73,9 @@ function TrainingChart({ list }: { list: Workout[] }) {
 }
 
 /** Petit débrief d'une séance : effort, concentration, confiance et ce qui a gêné. */
-function QuickDebrief({ w, onDone }: { w: Workout; onDone: (msg: string) => void }) {
+function QuickDebrief({ w, onDone, onMatch }: { w: Workout; onDone: (msg: string) => void; onMatch: (w: Workout) => void }) {
   const { update } = useApp();
+  const [match, setMatch] = useState(!!w.match);
   const [rpe, setRpe] = useState(w.rpe || 0);
   const [focus, setFocus] = useState(0);
   const [conf, setConf] = useState(0);
@@ -83,6 +84,11 @@ function QuickDebrief({ w, onDone }: { w: Workout; onDone: (msg: string) => void
   return (
     <div className="entry quick">
       <div className="row between"><h3>{w.sport}</h3><span className="small muted">{fmtDay(w.date)}{w.time ? ` · ${w.time.replace(':', ' h ')}` : ''} · {fmtDuration(w.durationSec)}</span></div>
+      <div className="seg" role="group" aria-label="Type de séance">
+        {([[false, 'Entraînement'], [true, 'Match']] as [boolean, string][]).map(([v, l]) => (
+          <button type="button" key={l} className={match === v ? 'on' : ''} aria-pressed={match === v} onClick={() => setMatch(v)}>{l}</button>
+        ))}
+      </div>
       <div className="field"><span>Effort ressenti</span><Rpe value={rpe} onChange={setRpe} /></div>
       <div className="grid2">
         <div className="field"><span>Concentration</span><Dots value={focus} onChange={setFocus} label="Concentration" /></div>
@@ -96,14 +102,16 @@ function QuickDebrief({ w, onDone }: { w: Workout; onDone: (msg: string) => void
         </div>
       </div>
       <button className="btn" disabled={!ready} style={{ alignSelf: 'flex-start' }} onClick={() => {
+        const done: Workout = { ...w, rpe, focus: focus || undefined, confidence: conf || undefined, issue: issue || undefined, debriefed: true, match: match || undefined };
         update((x) => {
-          const y = (x.workouts || []).find((z) => z.id === w.id);
-          if (y) { y.rpe = rpe; y.focus = focus || undefined; y.confidence = conf || undefined; y.issue = issue || undefined; y.debriefed = true; }
+          const i = (x.workouts || []).findIndex((z) => z.id === w.id);
+          if (i >= 0) x.workouts![i] = done;
         });
+        if (match) return onMatch(done);
         onDone(issue
         ? `${w.sport} débriefé. Noté : ${ISSUES_SHORT[issue].toLowerCase()}. Ta prochaine séance mentale cible ce point.`
         : `${w.sport} débriefé, charge ${Math.round(rpe * w.durationSec / 60)}.`);
-      }}>Valider</button>
+      }}>{match ? 'Valider et débriefer le match' : 'Valider'}</button>
     </div>
   );
 }
@@ -247,7 +255,7 @@ export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
         <div className="card" style={{ borderColor: 'var(--accent)' }}>
           <h2>Petit débrief</h2>
           <p className="small muted">30 secondes par séance. Ce que tu notes ici oriente tes prochaines séances mentales.</p>
-          {pending.slice(0, 3).map((x) => <QuickDebrief key={x.id} w={x} onDone={setImportMsg} />)}
+          {pending.slice(0, 3).map((x) => <QuickDebrief key={x.id} w={x} onDone={setImportMsg} onMatch={onDebrief} />)}
           {pending.length > 3 && <p className="small muted">Et {pending.length - 3} autre{pending.length > 4 ? 's' : ''} ensuite.</p>}
         </div>
       )}
@@ -318,8 +326,9 @@ export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
                     {[x.focus && `concentration ${x.focus}/5`, x.confidence && `confiance ${x.confidence}/5`, ci && `sommeil ${ci.sleep}/5, stress ${ci.stress}/5`].filter(Boolean).join(' · ')}
                   </p>
                 )}
-                {(prep || x.issue) && (
+                {(prep || x.issue || x.match) && (
                   <div className="row">
+                    {x.match && <span className="tag">Match</span>}
                     {prep && <span className="tag solide">{prep}</span>}
                     {x.issue && <span className="tag prometteur">{ISSUES_SHORT[x.issue]}</span>}
                   </div>
@@ -327,7 +336,9 @@ export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
                 {x.note && <p className="small">{x.note}</p>}
                 <div className="row">
                   <button className="link small" onClick={() => { setD(toDraft(x)); setEditing(true); setMsg(''); formRef.current?.scrollIntoView({ behavior: 'smooth' }); }}>{x.rpe ? 'Modifier' : 'Noter l’effort'}</button>
-                  <button className="link small" onClick={() => onDebrief(x)}>Débriefer</button>
+                  {s.debriefs.some((y) => y.workoutId === x.id)
+                    ? <span className="small muted">Débrief fait</span>
+                    : <button className="link small" onClick={() => onDebrief(x)}>{x.match ? 'Débrief de match' : 'Débriefer'}</button>}
                   <button className="link small" style={{ color: 'var(--muted)' }} onClick={() => update((y) => { y.workouts = (y.workouts || []).filter((z) => z.id !== x.id); })}>Supprimer</button>
                 </div>
               </div>
