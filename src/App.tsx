@@ -7,6 +7,7 @@ import { appStore, freshState, type SaveStatus } from './state/store';
 import { cloudConfigured } from './state/cloud';
 import { PasswordReset, SignInBanner } from './components/Sync';
 import type { State } from './state/types';
+import { useStravaAutoSync } from './sync/strava';
 import { Carnet } from './screens/Carnet';
 import { JourJ } from './screens/JourJ';
 import { Onboarding, Reassess } from './screens/Onboarding';
@@ -57,6 +58,9 @@ export default function App() {
     setTab('today');
     rerender();
   }, [store]);
+
+  const getState = useCallback(() => ref.current, []);
+  useStravaAutoSync(getState, update, status !== 'chargement');
 
   // Le plan de la semaine est figé dès qu'il est créé : on l'enregistre.
   const s = ref.current;

@@ -49,6 +49,11 @@ export function weeklyTraining(list: Workout[], weeks = 8, day = todayKey()) {
   });
 }
 
+/** Séances des 7 derniers jours pas encore débriefées (ni effort ni ressenti notés), la plus récente d'abord. */
+export function pendingDebriefs(s: State, day = todayKey()): Workout[] {
+  return sortWorkouts((s.workouts || []).filter((w) => !w.rpe && !w.focus && !w.issue && diffDays(w.date, day) <= 7 && w.date <= day));
+}
+
 /** Séance très dure (effort ≥ 8/10) aujourd'hui ou la veille. */
 export function hardTraining(s: State, day = todayKey()): Workout | undefined {
   return (s.workouts || []).find((w) => (w.date === day || w.date === addDays(day, -1)) && (w.rpe || 0) >= 8);

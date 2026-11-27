@@ -1,10 +1,14 @@
 import { useRef, useState } from 'react';
 import {
-  fmtDuration, mergeWorkouts, newId, parseDuration, parseGarminCsv, sessionLoad, sortWorkouts, trainingInsights, weeklyTraining,
+  fmtDuration, mergeWorkouts, newId, parseDuration, pendingDebriefs, sessionLoad, sortWorkouts, trainingInsights, weeklyTraining,
 } from '../engine/training';
 import { addDays, fmtDay, parseKey, todayKey } from '../state/dates';
 import type { Workout } from '../state/types';
 import { useApp } from '../app/ctx';
+import { readGarminFile } from '../engine/garminFiles';
+import { connectStrava, syncStrava, useStravaClientId } from '../sync/strava';
+import { ISSUES_SHORT } from '../engine/engine';
+import type { IssueKey } from '../state/types';
 import { Dots, RefList } from '../components/ui';
 
 const RPE_HINT: Record<number, string> = {
@@ -67,6 +71,81 @@ function TrainingChart({ list }: { list: Workout[] }) {
   );
 }
 
+/** Petit débrief d'une séance : effort, concentration, confiance et ce qui a gêné. */
+function QuickDebrief({ w, onDone }: { w: Workout; onDone: (msg: string) => void }) {
+  const { update } = useApp();
+  const [rpe, setRpe] = useState(0);
+  const [focus, setFocus] = useState(0);
+  const [conf, setConf] = useState(0);
+  const [issue, setIssue] = useState<IssueKey | '' | null>(null);
+  const ready = rpe > 0 && issue !== null;
+  return (
+    <div className="entry quick">
+      <div className="row between"><h3>{w.sport}</h3><span className="small muted">{fmtDay(w.date)}{w.time ? ` · ${w.time.replace(':', ' h ')}` : ''} · {fmtDuration(w.durationSec)}</span></div>
+      <div className="field"><span>Effort ressenti</span><Rpe value={rpe} onChange={setRpe} /></div>
+      <div className="grid2">
+        <div className="field"><span>Concentration</span><Dots value={focus} onChange={setFocus} label="Concentration" /></div>
+        <div className="field"><span>Confiance</span><Dots value={conf} onChange={setConf} label="Confiance" /></div>
+      </div>
+      <div className="field"><span>Ce qui t’a gêné dans la tête</span>
+        <div className="seg" role="group" aria-label="Ce qui t’a gêné">
+          {([['', 'Rien'], ...Object.entries(ISSUES_SHORT)] as [IssueKey | '', string][]).map(([k, l]) => (
+            <button type="button" key={k || 'rien'} className={issue === k ? 'on' : ''} aria-pressed={issue === k} onClick={() => setIssue(k)}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <button className="btn" disabled={!ready} style={{ alignSelf: 'flex-start' }} onClick={() => {
+        update((x) => {
+          const y = (x.workouts || []).find((z) => z.id === w.id);
+          if (y) { y.rpe = rpe; y.focus = focus || undefined; y.confidence = conf || undefined; y.issue = issue || undefined; }
+        });
+        onDone(issue
+        ? `${w.sport} débriefé. Noté : ${ISSUES_SHORT[issue].toLowerCase()}. Ta prochaine séance mentale cible ce point.`
+        : `${w.sport} débriefé, charge ${Math.round(rpe * w.durationSec / 60)}.`);
+      }}>Valider</button>
+    </div>
+  );
+}
+
+/** Connexion Strava : Garmin Connect y envoie chaque activité, Déclic les récupère toutes seules. */
+function StravaCard({ onMsg }: { onMsg: (m: string) => void }) {
+  const { s, update } = useApp();
+  const clientId = useStravaClientId();
+  const [busy, setBusy] = useState(false);
+  if (!clientId) return null; // version sans serveur (artifact) ou Strava non configuré
+  const link = s.strava;
+  const sync = async () => {
+    setBusy(true);
+    const r = await syncStrava(s, update);
+    setBusy(false);
+    onMsg('error' in r ? r.error : r.added ? `${r.added} nouvelle${r.added > 1 ? 's' : ''} séance${r.added > 1 ? 's' : ''} depuis Strava.` : 'Rien de nouveau sur Strava.');
+  };
+  return (
+    <div className="card">
+      <div className="row between"><h2>Strava</h2>{link && !link.error && <span className="tag solide">Connecté</span>}</div>
+      {!link ? (
+        <>
+          <p className="small muted">Ta montre Garmin envoie déjà tes séances sur Strava. Connecte Strava une fois : Déclic récupère ensuite chaque nouvelle séance tout seul, et te propose un petit débrief.</p>
+          <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={() => connectStrava(clientId)}>Connecter Strava</button>
+        </>
+      ) : link.error ? (
+        <>
+          <p className="small">{link.error}</p>
+          <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={() => connectStrava(clientId)}>Reconnecter Strava</button>
+        </>
+      ) : (
+        <>
+          <p className="small muted">{link.athlete ? `Compte de ${link.athlete}. ` : ''}Dernière récupération {link.lastSync ? new Date(link.lastSync).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' }) : 'jamais'}. Les nouvelles séances arrivent quand tu ouvres l’appli.</p>
+          <div className="row">
+            <button className="btn soft" disabled={busy} onClick={sync}>{busy ? 'Récupération…' : 'Récupérer maintenant'}</button>
+            <button className="link small" style={{ color: 'var(--muted)' }} onClick={() => update((x) => { delete x.strava; })}>Déconnecter</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
   const { s, update } = useApp();
   const list = sortWorkouts(s.workouts || []);
@@ -74,6 +153,7 @@ export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
   const blank = (): Draft => ({ id: newId(), date: todayKey(), time: '', sport: lastSport, duration: '', hrAvg: '', hrMax: '', rpe: 0, focus: 0, confidence: 0, note: '', source: 'manuel' });
   const [d, setD] = useState<Draft>(blank);
   const [editing, setEditing] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [msg, setMsg] = useState('');
   const formRef = useRef<HTMLDivElement>(null);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => { setMsg(''); setD({ ...d, [k]: v }); };
@@ -91,21 +171,50 @@ export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
     });
     const load = sessionLoad(w);
     setMsg(load !== null ? `Séance enregistrée. Charge : ${load} (effort ${w.rpe} × ${Math.round(w.durationSec / 60)} min).` : 'Séance enregistrée. Note ton effort ressenti pour calculer la charge.');
-    setD(blank()); setEditing(false);
+    setD(blank()); setEditing(false); setShowForm(false);
   };
 
-  const importCsv = async (file: File) => {
-    const found = parseGarminCsv(await file.text());
-    if (!found.length) { setMsg('Aucune séance reconnue dans ce fichier. Il faut l’export CSV des activités de Garmin Connect.'); return; }
+  const [importMsg, setImportMsg] = useState('');
+  const importFiles = async (files: File[]) => {
+    const fallback = s.profile?.sport ? s.profile.sport[0].toUpperCase() + s.profile.sport.slice(1) : undefined;
+    const found = (await Promise.all(files.map(async (f) => readGarminFile(f.name, await f.arrayBuffer(), fallback).catch(() => [])))).flat();
+    if (!found.length) { setImportMsg('Aucune séance reconnue. Choisis un fichier .fit, .zip, .tcx ou .csv exporté depuis Garmin Connect.'); return; }
     let added = 0;
     update((x) => { const r = mergeWorkouts(x.workouts || [], found); x.workouts = r.list; added = r.added; });
-    setMsg(added ? `${added} séance${added > 1 ? 's' : ''} importée${added > 1 ? 's' : ''}. Complète l’effort ressenti des plus récentes.` : 'Ces séances sont déjà dans Déclic.');
+    setImportMsg(added ? `${added} séance${added > 1 ? 's' : ''} importée${added > 1 ? 's' : ''}.${added ? ' Un petit débrief t’attend juste en dessous.' : ''}` : 'Ces séances sont déjà dans Déclic.');
   };
+  const pending = pendingDebriefs(s);
 
   return (
     <>
+      <StravaCard onMsg={setImportMsg} />
+      <details className="card">
+        <summary><b>Importer un fichier Garmin</b> <span className="small muted">(sans Strava)</span></summary>
+        <p className="small muted">Sur connect.garmin.com, ouvre l’activité, menu ⚙, « Exporter l’original » (.zip). Pour plusieurs séances : Activités, « Exporter en CSV ». Tout reste sur ton appareil.</p>
+        <label className="btn ghost" style={{ alignSelf: 'flex-start', cursor: 'pointer' }}>
+          Choisir des fichiers
+          <input type="file" multiple accept=".fit,.zip,.tcx,.csv,application/zip,text/csv" style={{ display: 'none' }}
+            onChange={(e) => { const f = [...(e.target.files || [])]; if (f.length) void importFiles(f); e.target.value = ''; }} />
+        </label>
+      </details>
+      {importMsg && <p className="small" role="status">{importMsg}</p>}
+
+      {pending.length > 0 && (
+        <div className="card" style={{ borderColor: 'var(--accent)' }}>
+          <h2>Petit débrief</h2>
+          <p className="small muted">30 secondes par séance. Ce que tu notes ici oriente tes prochaines séances mentales.</p>
+          {pending.slice(0, 3).map((x) => <QuickDebrief key={x.id} w={x} onDone={setImportMsg} />)}
+          {pending.length > 3 && <p className="small muted">Et {pending.length - 3} autre{pending.length > 4 ? 's' : ''} ensuite.</p>}
+        </div>
+      )}
+
+      {!editing && !showForm ? (
+        <div className="card" ref={formRef}>
+          <button className="btn ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setShowForm(true)}>Ajouter une séance à la main</button>
+        </div>
+      ) : (
       <div className="card" ref={formRef}>
-        <h2>{editing ? 'Compléter la séance' : 'Nouvelle séance'}</h2>
+        <h2>{editing ? 'Compléter la séance' : 'Ajouter une séance à la main'}</h2>
         <p className="small muted">Ta montre mesure le corps, toi tu notes la tête. Les deux ensemble montrent ce que ta préparation mentale change à l’entraînement.</p>
         <div className="grid2">
           <label className="field">Sport<input type="text" id="wSport" value={d.sport} maxLength={40} onChange={(e) => set('sport', e.target.value)} placeholder="Squash" /></label>
@@ -121,19 +230,11 @@ export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
         <label className="field">Note<input type="text" id="wNote" value={d.note} maxLength={200} onChange={(e) => set('note', e.target.value)} placeholder="Ex. bien resté dans l’échange après les fautes" /></label>
         <div className="row">
           <button className="btn" id="wSave" disabled={!w} onClick={save}>{editing ? 'Enregistrer' : 'Ajouter la séance'}</button>
-          {editing && <button className="btn ghost" onClick={() => { setD(blank()); setEditing(false); }}>Annuler</button>}
+          <button className="btn ghost" onClick={() => { setD(blank()); setEditing(false); setShowForm(false); }}>Annuler</button>
         </div>
-        {msg && <p className="small">{msg}</p>}
       </div>
-
-      <div className="card">
-        <h2>Importer depuis Garmin</h2>
-        <p className="small muted">Sur connect.garmin.com : Activités, Toutes les activités, puis « Exporter en CSV ». Choisis ce fichier ici. Les séances déjà présentes sont ignorées.</p>
-        <label className="btn ghost" style={{ alignSelf: 'flex-start', cursor: 'pointer' }}>
-          Choisir le fichier CSV
-          <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void importCsv(f); e.target.value = ''; }} />
-        </label>
-      </div>
+      )}
+      {msg && <p className="small" role="status">{msg}</p>}
 
       {list.length > 0 && (
         <div className="card">
@@ -173,7 +274,12 @@ export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
                     {[x.focus && `concentration ${x.focus}/5`, x.confidence && `confiance ${x.confidence}/5`, ci && `sommeil ${ci.sleep}/5, stress ${ci.stress}/5`].filter(Boolean).join(' · ')}
                   </p>
                 )}
-                {prep && <span className="tag solide" style={{ alignSelf: 'flex-start' }}>{prep}</span>}
+                {(prep || x.issue) && (
+                  <div className="row">
+                    {prep && <span className="tag solide">{prep}</span>}
+                    {x.issue && <span className="tag prometteur">{ISSUES_SHORT[x.issue]}</span>}
+                  </div>
+                )}
                 {x.note && <p className="small">{x.note}</p>}
                 <div className="row">
                   <button className="link small" onClick={() => { setD(toDraft(x)); setEditing(true); setMsg(''); formRef.current?.scrollIntoView({ behavior: 'smooth' }); }}>{x.rpe ? 'Modifier' : 'Noter l’effort'}</button>

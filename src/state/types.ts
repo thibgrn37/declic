@@ -84,7 +84,9 @@ export interface Workout {
   /** Confiance pendant la séance, 1 à 5. */
   confidence?: number;
   note?: string;
-  source: 'manuel' | 'garmin';
+  /** Ce qui a gêné mentalement pendant la séance (petit débrief). */
+  issue?: IssueKey;
+  source: 'manuel' | 'garmin' | 'strava';
 }
 
 export interface Slot {
@@ -117,4 +119,6 @@ export interface State {
   ambient?: AmbientKind;
   reminders?: ReminderSettings;
   workouts?: Workout[];
+  /** Liaison Strava : jeton de rafraîchissement, prénom, heure de la dernière synchro (ms). */
+  strava?: { refreshToken: string; athlete: string; lastSync: number; error?: string };
 }

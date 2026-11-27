@@ -5,7 +5,7 @@ import { fmtWeekday, mondayOf, todayKey } from '../state/dates';
 import type { Checkin } from '../state/types';
 import { useApp } from '../app/ctx';
 import { Coach, Dots, EvidenceTag, Header } from '../components/ui';
-import { fmtDuration } from '../engine/training';
+import { fmtDuration, pendingDebriefs } from '../engine/training';
 import { openCarnetOn } from './Carnet';
 
 const CI_ROWS: [keyof Checkin, string, string][] = [
@@ -131,7 +131,8 @@ function TrainingToday() {
   const { s, go } = useApp();
   const t = todayKey();
   const today = (s.workouts || []).filter((w) => w.date === t);
-  const open = () => { openCarnetOn('training'); go('carnet'); };
+  const pending = pendingDebriefs(s, t);
+  const open = () => { openCarnetOn('training'); go('carnet'); window.scrollTo(0, 0); };
   return (
     <div className="card">
       <div className="row between"><h2>Entraînement</h2>{today.length > 0 && <span className="tag solide">Noté</span>}</div>
@@ -140,7 +141,8 @@ function TrainingToday() {
       ) : (
         <p className="small muted">Tu t’entraînes aujourd’hui ? Note ta séance et ton ressenti pour voir l’effet de ta préparation mentale.</p>
       )}
-      <button className="btn soft" style={{ alignSelf: 'flex-start' }} onClick={open}>{today.length ? 'Voir mes séances' : 'Noter une séance'}</button>
+      {pending.length > 0 && <p className="small"><b>{pending.length} séance{pending.length > 1 ? 's' : ''} à débriefer.</b> 30 secondes chacune, pour adapter tes prochaines séances mentales.</p>}
+      <button className="btn soft" style={{ alignSelf: 'flex-start' }} onClick={open}>{pending.length ? 'Faire le petit débrief' : today.length ? 'Voir mes séances' : 'Importer ou noter une séance'}</button>
     </div>
   );
 }
