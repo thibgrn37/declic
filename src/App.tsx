@@ -5,7 +5,7 @@ import { ensureWeek } from './engine/engine';
 import { DEFAULT_VOICE, Voice, type ClaudeTts } from './audio/voice';
 import { appStore, freshState, type SaveStatus } from './state/store';
 import { cloudConfigured } from './state/cloud';
-import { SignInBanner } from './components/Sync';
+import { PasswordReset, SignInBanner } from './components/Sync';
 import type { State } from './state/types';
 import { Carnet } from './screens/Carnet';
 import { JourJ } from './screens/JourJ';
@@ -80,11 +80,12 @@ export default function App() {
   };
 
   if (!s.profile || s.assessments.length === 0) {
-    return <Ctx.Provider value={ctx}>{cloudConfigured && <SignInBanner />}<Onboarding /></Ctx.Provider>;
+    return <Ctx.Provider value={ctx}>{cloudConfigured && <SignInBanner />}<Onboarding /><PasswordReset /></Ctx.Provider>;
   }
 
   return (
     <Ctx.Provider value={ctx}>
+      <PasswordReset />
       <main className="app">
         {tab === 'today' && <Today />}
         {tab === 'programme' && <Programme />}

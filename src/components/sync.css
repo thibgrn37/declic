@@ -6,3 +6,7 @@ input[type=email], input[type=password] { width: 100%; border: 1px solid var(--l
 .app.banner { padding-bottom: 0; padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
 .app.banner + .app { padding-top: 12px; }
 .app.banner .top p { margin: 0; }
+.sheet-backdrop { position: fixed; inset: 0; z-index: 50; background: rgb(10 17 30 / .55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.sheet { width: 100%; max-width: 420px; }
+.link.small { align-self: flex-start; }
+.link:disabled { opacity: .5; }

@@ -52,3 +52,9 @@ Optionnel, une fois ton compte créé : **Authentication** > **Sign In / Provide
 ## Développement local avec Supabase
 
 Copie `.env.example` en `.env.local` et remplis les deux valeurs. Sans ce fichier, l'appli fonctionne comme avant, sans compte.
+
+## En cas de souci de connexion
+
+- **« E-mail ou mot de passe incorrect »** : vérifie la saisie (sur téléphone, la majuscule automatique). Sinon, touche **Mot de passe oublié ?** sous le bouton de connexion après avoir saisi ton e-mail. Le lien reçu ouvre l'appli sur une fenêtre « Nouveau mot de passe ». Sur iPhone, il s'ouvre dans Safari : change le mot de passe là, puis connecte-toi dans l'appli installée.
+- **« Confirme d'abord ton adresse »** : clique sur le lien de l'e-mail de confirmation. Dans Supabase, **Authentication** > **Users** indique si le compte est confirmé.
+- **Le lien de l'e-mail mène vers `localhost`** : la Site URL et les Redirect URLs de l'étape 3 ne sont pas réglées.

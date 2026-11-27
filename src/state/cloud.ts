@@ -9,12 +9,27 @@ const TABLE = 'declic_state';
 
 export const cloudConfigured = Boolean(URL && KEY);
 
+/** Arrivée par le lien « mot de passe oublié » : repéré avant que Supabase ne nettoie l'adresse. */
+let recovery = typeof location !== 'undefined' && /type=recovery/.test(location.hash + location.search);
+const recoveryListeners = new Set<() => void>();
+export const recoveryPending = () => recovery;
+export function onRecovery(cb: () => void) {
+  recoveryListeners.add(cb);
+  return () => { recoveryListeners.delete(cb); };
+}
+function setRecovery(v: boolean) {
+  recovery = v;
+  recoveryListeners.forEach((f) => f());
+}
+
 let clientP: Promise<SupabaseClient> | null = null;
 function client(): Promise<SupabaseClient> {
   if (!cloudConfigured) return Promise.reject(new Error('sauvegarde en ligne non configurée'));
-  clientP ??= import('@supabase/supabase-js').then((m) =>
-    m.createClient(URL!, KEY!, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }),
-  );
+  clientP ??= import('@supabase/supabase-js').then((m) => {
+    const sb = m.createClient(URL!, KEY!, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    sb.auth.onAuthStateChange((e) => { if (e === 'PASSWORD_RECOVERY') setRecovery(true); });
+    return sb;
+  });
   return clientP;
 }
 
@@ -40,7 +55,10 @@ export async function onAccountChange(cb: (a: Account | null) => void): Promise<
 
 /** Messages d'erreur Supabase les plus courants, en français. */
 function fr(msg: string): string {
-  if (/invalid login credentials/i.test(msg)) return 'E-mail ou mot de passe incorrect.';
+  if (/invalid login credentials/i.test(msg)) return 'E-mail ou mot de passe incorrect. Vérifie la saisie (majuscule automatique, espace en trop) ou touche « Mot de passe oublié ».';
+  if (/rate limit|too many|security purposes/i.test(msg)) return 'Trop de demandes d’affilée. Réessaie dans une minute.';
+  if (/same.*password|different from the old/i.test(msg)) return 'Choisis un mot de passe différent de l’ancien.';
+  if (/session.*missing|auth session/i.test(msg)) return 'Le lien a expiré. Redemande un e-mail « Mot de passe oublié ».';
   if (/email not confirmed/i.test(msg)) return 'Confirme d’abord ton adresse avec le lien reçu par e-mail.';
   if (/already registered/i.test(msg)) return 'Un compte existe déjà avec cet e-mail. Connecte-toi.';
   if (/password should be at least/i.test(msg)) return 'Le mot de passe doit faire au moins 6 caractères.';
@@ -80,3 +98,24 @@ export async function saveRemote(userId: string, state: unknown, at: number): Pr
   const { error } = await sb.from(TABLE).upsert({ user_id: userId, state, saved_at: at, updated_at: new Date().toISOString() });
   if (error) throw error;
 }
+
+/** Envoie l'e-mail « mot de passe oublié » ; le lien ramène sur l'appli. */
+export async function resetPassword(email: string): Promise<void> {
+  const sb = await client();
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin });
+  if (error) throw new Error(fr(error.message));
+}
+
+/** Après le lien de réinitialisation : enregistre le nouveau mot de passe (la session est déjà ouverte). */
+export async function updatePassword(password: string): Promise<void> {
+  const sb = await client();
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) throw new Error(fr(error.message));
+  setRecovery(false);
+  history.replaceState(null, '', location.pathname);
+}
+
+export function cancelRecovery() {
+  setRecovery(false);
+}
+
