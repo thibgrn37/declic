@@ -15,7 +15,7 @@ Appli web de préparation mentale pour sportifs. Les exercices s'appuient sur de
   - un nouveau bilan toutes les 4 semaines mesure les progrès et réajuste les priorités.
 - **Jour J** : respiration d'urgence d'une minute, compte à rebours, routine personnelle.
 - **Entraînements** (dans le Carnet) : récupération automatique des séances Garmin via intervals.icu (gratuit, voir [docs/INTERVALS.md](docs/INTERVALS.md)), import de fichiers Garmin (.fit, .zip, .tcx, .csv) ou saisie manuelle, petit débrief après chaque séance (effort, concentration, confiance, ce qui a gêné) qui oriente les séances mentales suivantes, charge hebdomadaire (session-RPE) et rapprochements avec les séances Déclic, le sommeil et le stress.
-- **Matchs** : dans le débrief de compétition, adversaire, score jeu par jeu et moment où le match a basculé ; fiche par adversaire (bilan, obstacles, ce que tu avais décidé de garder), rappelée dans Jour J avant de le rejouer.
+- **Matchs** : dans le débrief de compétition, adversaire, score jeu par jeu et moment où le match a basculé ; fiche par adversaire (bilan, obstacles, ce que tu avais décidé de garder), rappelée dans Jour J avant de le rejouer. Import de tout l’historique de matchs Squashnet (copier-coller de « Mes matchs ») et courbe du classement dans Progrès.
 - **Carnet** de débriefs et écran **Progrès** (radar des compétences, régularité, humeur et stress, badges).
 - **Guidage vocal** optionnel pendant les séances, pour garder les yeux fermés.
 

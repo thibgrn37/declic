@@ -66,6 +66,22 @@ export interface MatchInfo {
   source?: 'squashnet';
 }
 
+/** Match officiel repris de Squashnet (Mon classement > Mes matchs). */
+export interface SquashnetMatch {
+  date: string; // AAAA-MM-JJ
+  event: string;
+  opponent: string;
+  /** Classement de l'adversaire à ce moment (ex. 3B) et son rang. */
+  oppClass: string;
+  oppRank: number;
+  /** Ton classement et ton rang à ce moment. */
+  myClass: string;
+  myRank: number;
+  games: [number, number][];
+  /** WO (forfait) ou Ab (abandon) : le score ne dit pas qui a gagné. */
+  special?: 'WO' | 'Ab';
+}
+
 export interface Debrief {
   date: string;
   title: string;
@@ -140,6 +156,8 @@ export interface State {
   ambient?: AmbientKind;
   reminders?: ReminderSettings;
   workouts?: Workout[];
+  /** Historique de matchs importé de Squashnet. */
+  squashnet?: { matches: SquashnetMatch[]; importedAt: string };
   /** Liaison intervals.icu : clé API personnelle, heure de la dernière synchro (ms). */
   /** `sports` : sports gardés à l'import (squash par défaut) ; `seen` : sports reçus d'intervals.icu, gardés ou non. */
   intervals?: { apiKey: string; lastSync: number; error?: string; sports?: string[]; seen?: string[] };

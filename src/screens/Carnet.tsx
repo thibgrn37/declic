@@ -3,7 +3,8 @@ import { ISSUES, compDays } from '../engine/engine';
 import { detectIssues } from '../engine/debrief';
 import { diffDays, fmtDay, todayKey } from '../state/dates';
 import type { Debrief, IssueKey, TurningKey, Workout } from '../state/types';
-import { TURNING, findOpponent, fmtScore, matchResult, opponentCards, parseScore, type OpponentCard } from '../engine/opponents';
+import { TURNING, findOpponent, fmtScore, matchResult, normName, opponentCards, parseScore, type OpponentCard, type OpponentMatch } from '../engine/opponents';
+import { mergeSquashnet, parseSquashnet } from '../engine/squashnet';
 import { Training } from './Training';
 import { fmtDuration } from '../engine/training';
 import { useApp } from '../app/ctx';
@@ -68,12 +69,17 @@ const resultLabel = (games: [number, number][]) => {
   return r.won === null ? '' : `${r.won ? 'Victoire' : 'Défaite'} ${r.me}-${r.them}`;
 };
 
+const matchLine = (m: OpponentMatch) => {
+  const res = m.official?.special ? (m.official.special === 'WO' ? 'Forfait' : 'Abandon') : m.match.games.length ? `${resultLabel(m.match.games)} (${fmtScore(m.match.games)})` : 'score non noté';
+  return `${fmtDay(m.date)}${m.date.slice(0, 4) !== todayKey().slice(0, 4) ? ` ${m.date.slice(0, 4)}` : ''} : ${res}${m.official ? ` · ${m.official.event}` : ''}${m.match.turning ? ` · ${TURNING[m.match.turning].toLowerCase()}` : ''}`;
+};
+
 /** Rappel avant de rejouer quelqu'un : bilan, ce qui a gêné, ce que tu avais décidé de garder. */
 export function OpponentSummary({ c }: { c: OpponentCard }) {
-  const last = c.matches[0];
   return (
     <div className="stack">
-      <p className="small"><b>{c.wins} victoire{c.wins > 1 ? 's' : ''}, {c.losses} défaite{c.losses > 1 ? 's' : ''}</b> · dernier match le {fmtDay(last.date)}{last.match.games.length ? ` (${fmtScore(last.match.games)})` : ''}</p>
+      <p className="small"><b>{c.wins} victoire{c.wins > 1 ? 's' : ''}, {c.losses} défaite{c.losses > 1 ? 's' : ''}</b>{c.cls ? ` · classé ${c.cls}` : ''}</p>
+      <p className="small muted">Dernier match : {matchLine(c.matches[0])}</p>
       {c.issues.length > 0 && <p className="small">Ce qui t’a gêné face à cet adversaire : {c.issues.slice(0, 3).map((x) => <span key={x.issue} className="tag prometteur" style={{ marginRight: 4 }}>{ISSUES[x.issue]}{x.n > 1 ? ` ×${x.n}` : ''}</span>)}</p>}
       {c.turning.length > 0 && <p className="small">Moment clé : {c.turning.map((x) => `${TURNING[x.key].toLowerCase()}${x.n > 1 ? ` (${x.n} fois)` : ''}`).join(', ')}</p>}
       {c.lastKeep && <p className="small">Tu avais décidé de garder : <b>{c.lastKeep}</b></p>}
@@ -81,30 +87,60 @@ export function OpponentSummary({ c }: { c: OpponentCard }) {
   );
 }
 
+function SquashnetImport() {
+  const { s, update } = useApp();
+  const [text, setText] = useState('');
+  const [msg, setMsg] = useState('');
+  const sq = s.squashnet;
+  return (
+    <details className="field" open={!sq}>
+      <summary className="small"><b>{sq ? `Squashnet : ${sq.matches.length} matchs importés, mis à jour le ${fmtDay(sq.importedAt)}` : 'Importer mes matchs depuis Squashnet'}</b></summary>
+      <ol className="small muted">
+        <li>Sur squashnet.fr, connecte-toi puis ouvre <b>Mon classement</b> &gt; <b>Mes matchs</b>.</li>
+        <li>Mets la date de début en 2000 et clique sur Valider pour tout afficher.</li>
+        <li>Sélectionne toute la page (Cmd+A ou Ctrl+A), copie-la et colle-la ici.</li>
+      </ol>
+      <textarea value={text} onChange={(e) => { setText(e.target.value); setMsg(''); }} placeholder="Colle ici la page « Mes matchs »" aria-label="Page Mes matchs de Squashnet" />
+      <button className="btn" disabled={!text.trim()} onClick={() => {
+        const found = parseSquashnet(text);
+        if (!found.length) { setMsg('Aucun match reconnu. Vérifie que tu as copié le tableau « Mes matchs ».'); return; }
+        let added = 0;
+        update((x) => { const r = mergeSquashnet(x.squashnet?.matches || [], found); added = r.added; x.squashnet = { matches: r.list, importedAt: todayKey() }; });
+        setText('');
+        setMsg(added ? `${added} match${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''}.` : 'Rien de nouveau : tous ces matchs étaient déjà là.');
+      }}>Importer</button>
+      {msg && <p className="small">{msg}</p>}
+    </details>
+  );
+}
+
 function Opponents() {
   const { s } = useApp();
-  const cards = useMemo(() => opponentCards(s), [s]);
+  const cards = opponentCards(s); // état modifié sur place : pas de useMemo sur s
   const [open, setOpen] = useState('');
-  if (!cards.length) return null;
+  const [q, setQ] = useState('');
+  const [all, setAll] = useState(false);
+  const shown = q.trim() ? cards.filter((c) => normName(c.name).includes(normName(q))) : all ? cards : cards.slice(0, 8);
   return (
     <div className="card">
       <h2>Mes adversaires</h2>
       <p className="small muted">Avant de rejouer quelqu’un, relis ce qui s’était passé la dernière fois.</p>
-      {cards.map((c) => (
+      <SquashnetImport />
+      {cards.length > 8 && <label className="field">Chercher un adversaire<input type="search" value={q} maxLength={60} onChange={(e) => setQ(e.target.value)} placeholder="Nom ou prénom" /></label>}
+      {shown.map((c) => (
         <div className="entry" key={c.name}>
           <button type="button" className="row between link" style={{ width: '100%', textAlign: 'left' }} aria-expanded={open === c.name} onClick={() => setOpen(open === c.name ? '' : c.name)}>
-            <h3>{c.name}</h3><span className="small muted num">{c.wins}V · {c.losses}D</span>
+            <h3>{c.name}{c.cls ? <span className="small muted"> · {c.cls}</span> : null}</h3><span className="small muted num">{c.wins}V · {c.losses}D</span>
           </button>
           {open === c.name && (
             <>
               <OpponentSummary c={c} />
-              <ul className="small">
-                {c.matches.map((m, k) => <li key={k}>{fmtDay(m.date)} : {m.match.games.length ? `${resultLabel(m.match.games)} (${fmtScore(m.match.games)})` : 'score non noté'}{m.match.turning ? ` · ${TURNING[m.match.turning].toLowerCase()}` : ''}</li>)}
-              </ul>
+              <ul className="small">{c.matches.map((m, k) => <li key={k}>{matchLine(m)}</li>)}</ul>
             </>
           )}
         </div>
       ))}
+      {!q.trim() && !all && cards.length > 8 && <button className="link small" onClick={() => setAll(true)}>Voir les {cards.length} adversaires</button>}
     </div>
   );
 }
@@ -127,8 +163,8 @@ export function Carnet() {
   const [score, setScore] = useState('');
   const [turning, setTurning] = useState<TurningKey | ''>('');
   const games = useMemo(() => parseScore(score), [score]);
-  const known = useMemo(() => (opp.trim().length > 2 ? findOpponent(s, opp) : undefined), [s, opp]);
-  const oppNames = useMemo(() => opponentCards(s).map((c) => c.name), [s]);
+  const known = opp.trim().length > 2 ? findOpponent(s, opp) : undefined;
+  const oppNames = opponentCards(s).map((c) => c.name);
   const set = <K extends keyof Debrief>(k: K, v: Debrief[K]) => { setSaved(''); setD({ ...d, [k]: v }); };
   const canSave = d.good.trim() || d.bad.trim() || d.keep.trim() || (d.kind === 'competition' && games.length > 0);
   const detected = useMemo(() => detectIssues(`${d.bad} ${d.good}`).map((x) => x.issue), [d.bad, d.good]);
