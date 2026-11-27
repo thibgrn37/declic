@@ -14,7 +14,7 @@ Appli web de préparation mentale pour sportifs. Les exercices s'appuient sur de
   - à J-7 d'une compétition, le programme passe en protocole compétition ;
   - un nouveau bilan toutes les 4 semaines mesure les progrès et réajuste les priorités.
 - **Jour J** : respiration d'urgence d'une minute, compte à rebours, routine personnelle.
-- **Entraînements** (dans le Carnet) : récupération automatique depuis Strava (où Garmin envoie déjà les séances, voir [docs/STRAVA.md](docs/STRAVA.md)), import de fichiers Garmin (.fit, .zip, .tcx, .csv) ou saisie manuelle, petit débrief après chaque séance (effort, concentration, confiance, ce qui a gêné) qui oriente les séances mentales suivantes, charge hebdomadaire (session-RPE) et rapprochements avec les séances Déclic, le sommeil et le stress.
+- **Entraînements** (dans le Carnet) : récupération automatique des séances Garmin via intervals.icu (gratuit, voir [docs/INTERVALS.md](docs/INTERVALS.md)), import de fichiers Garmin (.fit, .zip, .tcx, .csv) ou saisie manuelle, petit débrief après chaque séance (effort, concentration, confiance, ce qui a gêné) qui oriente les séances mentales suivantes, charge hebdomadaire (session-RPE) et rapprochements avec les séances Déclic, le sommeil et le stress.
 - **Carnet** de débriefs et écran **Progrès** (radar des compétences, régularité, humeur et stress, badges).
 - **Guidage vocal** optionnel pendant les séances, pour garder les yeux fermés.
 

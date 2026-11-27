@@ -6,7 +6,7 @@ import { addDays, fmtDay, parseKey, todayKey } from '../state/dates';
 import type { Workout } from '../state/types';
 import { useApp } from '../app/ctx';
 import { readGarminFile } from '../engine/garminFiles';
-import { connectStrava, syncStrava, useStravaClientId } from '../sync/strava';
+import { connectIntervals, intervalsAvailable, syncIntervals, type SyncResult } from '../sync/intervals';
 import { ISSUES_SHORT } from '../engine/engine';
 import type { IssueKey } from '../state/types';
 import { Dots, RefList } from '../components/ui';
@@ -47,6 +47,7 @@ function fromDraft(d: Draft): Workout | null {
     id: d.id, date: d.date, time: d.time, sport: d.sport.trim() || 'Entraînement', durationSec,
     hrAvg: n(d.hrAvg), hrMax: n(d.hrMax), rpe: d.rpe || undefined, focus: d.focus || undefined,
     confidence: d.confidence || undefined, note: d.note.trim() || undefined, source: d.source,
+    debriefed: d.rpe > 0 || undefined,
   };
 }
 
@@ -74,7 +75,7 @@ function TrainingChart({ list }: { list: Workout[] }) {
 /** Petit débrief d'une séance : effort, concentration, confiance et ce qui a gêné. */
 function QuickDebrief({ w, onDone }: { w: Workout; onDone: (msg: string) => void }) {
   const { update } = useApp();
-  const [rpe, setRpe] = useState(0);
+  const [rpe, setRpe] = useState(w.rpe || 0);
   const [focus, setFocus] = useState(0);
   const [conf, setConf] = useState(0);
   const [issue, setIssue] = useState<IssueKey | '' | null>(null);
@@ -97,7 +98,7 @@ function QuickDebrief({ w, onDone }: { w: Workout; onDone: (msg: string) => void
       <button className="btn" disabled={!ready} style={{ alignSelf: 'flex-start' }} onClick={() => {
         update((x) => {
           const y = (x.workouts || []).find((z) => z.id === w.id);
-          if (y) { y.rpe = rpe; y.focus = focus || undefined; y.confidence = conf || undefined; y.issue = issue || undefined; }
+          if (y) { y.rpe = rpe; y.focus = focus || undefined; y.confidence = conf || undefined; y.issue = issue || undefined; y.debriefed = true; }
         });
         onDone(issue
         ? `${w.sport} débriefé. Noté : ${ISSUES_SHORT[issue].toLowerCase()}. Ta prochaine séance mentale cible ce point.`
@@ -107,38 +108,38 @@ function QuickDebrief({ w, onDone }: { w: Workout; onDone: (msg: string) => void
   );
 }
 
-/** Connexion Strava : Garmin Connect y envoie chaque activité, Déclic les récupère toutes seules. */
-function StravaCard({ onMsg }: { onMsg: (m: string) => void }) {
+/** Connexion intervals.icu : Garmin Connect y envoie chaque activité, Déclic les récupère toutes seules. */
+function IntervalsCard({ onMsg }: { onMsg: (m: string) => void }) {
   const { s, update } = useApp();
-  const clientId = useStravaClientId();
+  const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
-  if (!clientId) return null; // version sans serveur (artifact) ou Strava non configuré
-  const link = s.strava;
-  const sync = async () => {
+  if (!intervalsAvailable()) return null; // version artifact : pas de serveur relais
+  const link = s.intervals;
+  const report = (r: SyncResult, empty: string) =>
+    onMsg('error' in r ? r.error : r.added ? `${r.added} nouvelle${r.added > 1 ? 's' : ''} séance${r.added > 1 ? 's' : ''} récupérée${r.added > 1 ? 's' : ''}.` : empty);
+  const connect = async () => {
     setBusy(true);
-    const r = await syncStrava(s, update);
-    setBusy(false);
-    onMsg('error' in r ? r.error : r.added ? `${r.added} nouvelle${r.added > 1 ? 's' : ''} séance${r.added > 1 ? 's' : ''} depuis Strava.` : 'Rien de nouveau sur Strava.');
+    report(await connectIntervals(key.trim(), s, update), 'Connecté. Aucune séance ces 30 derniers jours pour l’instant.');
+    setBusy(false); setKey('');
   };
+  const sync = async () => { setBusy(true); report(await syncIntervals(s, update), 'Rien de nouveau.'); setBusy(false); };
   return (
     <div className="card">
-      <div className="row between"><h2>Strava</h2>{link && !link.error && <span className="tag solide">Connecté</span>}</div>
-      {!link ? (
+      <div className="row between"><h2>Garmin, en automatique</h2>{link && !link.error && <span className="tag solide">Connecté</span>}</div>
+      {!link || link.error ? (
         <>
-          <p className="small muted">Ta montre Garmin envoie déjà tes séances sur Strava. Connecte Strava une fois : Déclic récupère ensuite chaque nouvelle séance tout seul, et te propose un petit débrief.</p>
-          <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={() => connectStrava(clientId)}>Connecter Strava</button>
-        </>
-      ) : link.error ? (
-        <>
-          <p className="small">{link.error}</p>
-          <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={() => connectStrava(clientId)}>Reconnecter Strava</button>
+          <p className="small muted">{link?.error || 'Via intervals.icu, gratuit : il reçoit tes séances de Garmin Connect et Déclic les récupère à chaque ouverture. Colle ici ta clé API intervals.icu (Settings, Developer Settings).'}</p>
+          <label className="field">Clé API intervals.icu
+            <input type="text" id="icuKey" value={key} autoComplete="off" autoCapitalize="off" spellCheck={false} onChange={(e) => setKey(e.target.value)} placeholder="Colle ta clé ici" />
+          </label>
+          <button className="btn" style={{ alignSelf: 'flex-start' }} disabled={busy || key.trim().length < 8} onClick={connect}>{busy ? 'Vérification…' : 'Connecter'}</button>
         </>
       ) : (
         <>
-          <p className="small muted">{link.athlete ? `Compte de ${link.athlete}. ` : ''}Dernière récupération {link.lastSync ? new Date(link.lastSync).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' }) : 'jamais'}. Les nouvelles séances arrivent quand tu ouvres l’appli.</p>
+          <p className="small muted">Dernière récupération {link.lastSync ? new Date(link.lastSync).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' }) : 'jamais'}. Les nouvelles séances arrivent quand tu ouvres l’appli.</p>
           <div className="row">
             <button className="btn soft" disabled={busy} onClick={sync}>{busy ? 'Récupération…' : 'Récupérer maintenant'}</button>
-            <button className="link small" style={{ color: 'var(--muted)' }} onClick={() => update((x) => { delete x.strava; })}>Déconnecter</button>
+            <button className="link small" style={{ color: 'var(--muted)' }} onClick={() => update((x) => { delete x.intervals; })}>Déconnecter</button>
           </div>
         </>
       )}
@@ -187,9 +188,9 @@ export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
 
   return (
     <>
-      <StravaCard onMsg={setImportMsg} />
+      <IntervalsCard onMsg={setImportMsg} />
       <details className="card">
-        <summary><b>Importer un fichier Garmin</b> <span className="small muted">(sans Strava)</span></summary>
+        <summary><b>Importer un fichier Garmin</b> <span className="small muted">(sans connexion)</span></summary>
         <p className="small muted">Sur connect.garmin.com, ouvre l’activité, menu ⚙, « Exporter l’original » (.zip). Pour plusieurs séances : Activités, « Exporter en CSV ». Tout reste sur ton appareil.</p>
         <label className="btn ghost" style={{ alignSelf: 'flex-start', cursor: 'pointer' }}>
           Choisir des fichiers

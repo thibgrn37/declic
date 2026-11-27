@@ -91,7 +91,9 @@ describe('lien avec le mental', () => {
     const t = todayKey();
     s.workouts = [squash({ date: t }), squash({ date: addDays(t, -10) })];
     expect(pendingDebriefs(s, t)).toHaveLength(1);
-    s.workouts[0].rpe = 7;
+    s.workouts[0].rpe = 7; // effort venu de la montre : le débrief reste proposé
+    expect(pendingDebriefs(s, t)).toHaveLength(1);
+    s.workouts[0].debriefed = true;
     expect(pendingDebriefs(s, t)).toHaveLength(0);
   });
   it('le petit débrief oriente la séance suivante et les priorités', () => {
