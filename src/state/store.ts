@@ -36,6 +36,7 @@ export function migrate(raw: unknown): State {
 export function trim(s: State) {
   if (s.sessions.length > 600) s.sessions = s.sessions.slice(-600);
   if (s.debriefs.length > 200) s.debriefs.length = 200;
+  if (s.workouts && s.workouts.length > 800) s.workouts.length = 800;
   const ck = Object.keys(s.checkins).sort();
   while (ck.length > 365) delete s.checkins[ck.shift()!];
   const pk = Object.keys(s.plans).sort();

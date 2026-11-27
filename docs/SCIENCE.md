@@ -16,10 +16,16 @@ Deux niveaux de preuve sont affichés :
 | Respiration lente | Prometteur | Lehrer et al. (2020), 58 essais : effet petit à modéré, parmi les plus nets sur l'anxiété et la performance. Pagaduan et al. (2020), 6 essais chez des sportifs : gains sur certaines performances, études petites. | Respiration autour de 6 cycles par minute (5-5), puis expiration longue (4-6), puis version terrain d'une minute. Proposée automatiquement quand le check-in montre un stress élevé. |
 | Attention au présent | Prometteur | Bühlmayer et al. (2017), 9 essais : effet sur le flow et l'appréhension (SMD = 0,72), et sur la performance en sports de précision. Wang et al. (2023) : pas d'effet démontré sur l'anxiété. | Proposée en complément, surtout quand la concentration ou le stress sont des points faibles. |
 
+## Entraînements et charge
+
+Déclic calcule la charge d'une séance avec la méthode **session-RPE** (Foster et al., 2001) : effort perçu sur l'échelle CR-10 × durée en minutes. Haddad et al. (2017) la jugent valide et fiable dans de nombreux sports, y compris les sports intermittents. Van Cutsem et al. (2017) montrent que la fatigue mentale augmente l'effort perçu sans changer la fréquence cardiaque : c'est pourquoi Déclic demande l'effort ressenti, la concentration et la confiance à côté des données de la montre.
+
+Les rapprochements affichés (concentration avec ou sans séance Déclic la veille, effort selon le sommeil, concentration selon le stress) ne s'affichent qu'avec au moins 3 séances de chaque côté et un écart d'au moins 0,4 point. Ce sont des tendances personnelles, pas des preuves de cause à effet.
+
 ## Limites
 
 - Le **bilan** de Déclic est une auto-évaluation écrite pour l'appli. Il couvre des dimensions mesurées par les questionnaires de compétences mentales en sport, mais ce n'est pas un test validé ni un outil de diagnostic.
-- Les **règles d'adaptation** (monter de niveau après deux séances notées 4 ou 5, consolider après deux séances notées 1 ou 2, séance allégée si stress ≥ 4 ou sommeil ≤ 2) sont des choix de conception raisonnables, pas des résultats d'études. Elles sont dans `src/engine/engine.ts` et testées dans `src/engine/engine.test.ts`.
+- Les **règles d'adaptation** (monter de niveau après deux séances notées 4 ou 5, consolider après deux séances notées 1 ou 2, séance allégée si stress ≥ 4, sommeil ≤ 2, ou séance d'entraînement notée 8/10 ou plus le jour même ou la veille) sont des choix de conception raisonnables, pas des résultats d'études. Elles sont dans `src/engine/engine.ts` et testées dans `src/engine/engine.test.ts`.
 - Plusieurs méta-analyses signalent un biais de publication possible et des études de petite taille. Les effets réels peuvent être plus faibles.
 - Déclic est un outil d'entraînement mental, pas un soin. Les exercices ne remplacent pas un professionnel de santé.
 

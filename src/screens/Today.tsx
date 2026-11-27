@@ -5,6 +5,8 @@ import { fmtWeekday, mondayOf, todayKey } from '../state/dates';
 import type { Checkin } from '../state/types';
 import { useApp } from '../app/ctx';
 import { Coach, Dots, EvidenceTag, Header } from '../components/ui';
+import { fmtDuration } from '../engine/training';
+import { openCarnetOn } from './Carnet';
 
 const CI_ROWS: [keyof Checkin, string, string][] = [
   ['mood', 'Humeur', '1 = au plus bas, 5 = au top'],
@@ -31,7 +33,7 @@ export function Today() {
 
   let coach: [string, string];
   if (!ci) coach = ['Check-in', `${name}comment tu te sens aujourd’hui ? Ton état du jour ajuste la séance proposée.`];
-  else if (sug?.source === 'allegee') coach = ['Séance allégée', 'Ton check-in montre une journée chargée. Une régulation courte vaut mieux qu’une séance bâclée.'];
+  else if (sug?.source === 'allegee') coach = ['Séance allégée', 'Journée chargée. Une régulation courte vaut mieux qu’une séance bâclée.'];
   else if (cd !== null && cd >= 0 && cd <= 7) coach = [cd === 0 ? 'Jour J' : `J-${cd}`, `Protocole compétition activé pour ${s.profile?.compName || 'ta compétition'}.`];
   else if (!sug) coach = ['Semaine bouclée', 'Toutes tes séances de la semaine sont faites. Le repos fait aussi partie de l’entraînement.'];
   else coach = [`Semaine ${plan.programWeek} · ${PHASES[phase].name}`, PHASES[phase].text];
@@ -65,6 +67,8 @@ export function Today() {
           </>
         )}
       </div>
+
+      <TrainingToday />
 
       <div className="card">
         <div className="row between"><h2>Ma semaine</h2><span className="small muted num">{doneCount}/{plan.slots.length} séances</span></div>
@@ -118,6 +122,25 @@ function SuggestionCard() {
           Faire plutôt la séance prévue : {TECH_BY_ID[sug.alternative.techId].name}
         </button>
       )}
+    </div>
+  );
+}
+
+/** Entraînement du jour : rappel de le noter, pour relier le physique et le mental. */
+function TrainingToday() {
+  const { s, go } = useApp();
+  const t = todayKey();
+  const today = (s.workouts || []).filter((w) => w.date === t);
+  const open = () => { openCarnetOn('training'); go('carnet'); };
+  return (
+    <div className="card">
+      <div className="row between"><h2>Entraînement</h2>{today.length > 0 && <span className="tag solide">Noté</span>}</div>
+      {today.length ? (
+        <p className="muted small">{today.map((w) => `${w.sport} ${fmtDuration(w.durationSec)}${w.rpe ? `, effort ${w.rpe}/10` : ''}`).join(' · ')}</p>
+      ) : (
+        <p className="small muted">Tu t’entraînes aujourd’hui ? Note ta séance et ton ressenti pour voir l’effet de ta préparation mentale.</p>
+      )}
+      <button className="btn soft" style={{ alignSelf: 'flex-start' }} onClick={open}>{today.length ? 'Voir mes séances' : 'Noter une séance'}</button>
     </div>
   );
 }

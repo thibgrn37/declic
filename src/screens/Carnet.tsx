@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { ISSUES, compDays } from '../engine/engine';
 import { detectIssues } from '../engine/debrief';
 import { diffDays, fmtDay, todayKey } from '../state/dates';
-import type { Debrief, IssueKey } from '../state/types';
+import type { Debrief, IssueKey, Workout } from '../state/types';
+import { Training } from './Training';
+import { fmtDuration } from '../engine/training';
 import { useApp } from '../app/ctx';
 import { Choice, Dots, Header } from '../components/ui';
 
@@ -60,26 +62,40 @@ function ObstacleCounts({ list }: { list: Debrief[] }) {
   );
 }
 
+type View = 'debriefs' | 'training';
+let nextView: View | null = null;
+/** Ouvre le Carnet sur une vue donnée (depuis l'écran Aujourd'hui). */
+export const openCarnetOn = (v: View) => { nextView = v; };
+
 export function Carnet() {
+  const [view, setView] = useState<View>(() => { const v = nextView || 'debriefs'; nextView = null; return v; });
   const { s, update } = useApp();
   const cd = compDays(s.profile);
   const empty = (): Debrief => ({ date: todayKey(), title: cd !== null && cd <= 0 && cd > -4 ? s.profile?.compName || '' : '', kind: 'competition', feel: 0, perf: 0, good: '', bad: '', keep: '', issue: '' });
   const [d, setD] = useState<Debrief>(empty);
   const [touchedIssue, setTouchedIssue] = useState(false);
   const [saved, setSaved] = useState('');
+  const [from, setFrom] = useState<Workout | null>(null);
   const set = <K extends keyof Debrief>(k: K, v: Debrief[K]) => { setSaved(''); setD({ ...d, [k]: v }); };
   const canSave = d.good.trim() || d.bad.trim() || d.keep.trim();
   const detected = useMemo(() => detectIssues(`${d.bad} ${d.good}`).map((x) => x.issue), [d.bad, d.good]);
   // Tant que l'utilisateur n'a pas choisi lui-même, l'obstacle principal suit la détection.
   const issue: IssueKey | '' = touchedIssue ? d.issue : detected[0] || '';
 
+  const debriefWorkout = (w: Workout) => {
+    setD({ ...empty(), kind: 'entrainement', date: w.date, title: `${w.sport}, ${fmtDay(w.date)}`, good: '', perf: 0 });
+    setTouchedIssue(false); setSaved(''); setFrom(w);
+    setView('debriefs'); window.scrollTo(0, 0);
+  };
   return (
     <>
       <Header />
       <h1>Carnet</h1>
+      <Choice label="Vue du carnet" value={view} onChange={setView} options={[{ v: 'debriefs', label: 'Débriefs' }, { v: 'training', label: 'Entraînements' }]} />
+      {view === 'training' ? <Training onDebrief={debriefWorkout} /> : <>
       <div className="card">
         <h2>Nouveau débrief</h2>
-        <p className="small muted">Après une compétition ou un entraînement important. Ce que tu notes oriente tes prochaines séances.</p>
+        <p className="small muted">{from ? `Séance de ${from.sport} du ${fmtDay(from.date)} (${fmtDuration(from.durationSec)}${from.rpe ? `, effort ${from.rpe}/10` : ''}).` : 'Après une compétition ou un entraînement important. Ce que tu notes oriente tes prochaines séances.'}</p>
         <Choice label="Type" value={d.kind} onChange={(v) => set('kind', v)} options={[{ v: 'competition', label: 'Compétition' }, { v: 'entrainement', label: 'Entraînement' }]} />
         <label className="field">Événement<input type="text" id="dTitle" value={d.title} maxLength={100} onChange={(e) => set('title', e.target.value)} placeholder="Ex. Match contre Villeurbanne" /></label>
         <div className="field"><span>Ressenti global <span className="muted small" style={{ fontWeight: 400 }}>comment tu t’es senti</span></span><Dots value={d.feel} onChange={(v) => set('feel', v)} label="Ressenti global" /></div>
@@ -95,10 +111,11 @@ export function Carnet() {
         </div>
         <label className="field">Ce que je garde pour la prochaine fois<textarea id="dKeep" value={d.keep} maxLength={1000} onChange={(e) => set('keep', e.target.value)} placeholder="Une seule chose concrète" /></label>
         <button className="btn" disabled={!canSave} onClick={() => {
-          update((x) => { x.debriefs.unshift({ ...d, issue, detected, title: d.title.trim(), date: todayKey() }); });
+          update((x) => { x.debriefs.unshift({ ...d, issue, detected, title: d.title.trim(), date: from ? d.date : todayKey() }); });
           setSaved(issue ? `Obstacle noté : ${ISSUES[issue].toLowerCase()}. Tes prochaines semaines en tiennent compte.` : 'Tu le retrouves ci-dessous.');
           setD(empty());
           setTouchedIssue(false);
+          setFrom(null);
         }}>Enregistrer le débrief</button>
         {saved && <p className="small"><span className="tag solide">Enregistré</span> {saved}</p>}
       </div>
@@ -125,6 +142,7 @@ export function Carnet() {
             </div>
           ))}
       </div>
+      </>}
     </>
   );
 }

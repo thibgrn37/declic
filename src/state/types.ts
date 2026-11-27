@@ -68,6 +68,25 @@ export interface Debrief {
   detected?: IssueKey[];
 }
 
+/** Séance d'entraînement sportif, saisie à la main ou importée (Garmin). */
+export interface Workout {
+  id: string;
+  date: string; // AAAA-MM-JJ
+  time: string; // HH:MM, ou ''
+  sport: string;
+  durationSec: number;
+  hrAvg?: number;
+  hrMax?: number;
+  /** Effort perçu de la séance, échelle CR-10 (1 à 10). */
+  rpe?: number;
+  /** Concentration pendant la séance, 1 à 5. */
+  focus?: number;
+  /** Confiance pendant la séance, 1 à 5. */
+  confidence?: number;
+  note?: string;
+  source: 'manuel' | 'garmin';
+}
+
 export interface Slot {
   techId: string;
   reason: string;
@@ -97,4 +116,5 @@ export interface State {
   voice?: VoiceSettings;
   ambient?: AmbientKind;
   reminders?: ReminderSettings;
+  workouts?: Workout[];
 }

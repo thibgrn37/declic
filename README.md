@@ -8,12 +8,13 @@ Appli web de préparation mentale pour sportifs. Les exercices s'appuient sur de
 - **Programme de 8 semaines** en 3 phases (fondations, construction, intégration). Chaque semaine combine un socle commun et des séances ciblées sur les points faibles.
 - **6 techniques à niveaux progressifs** : imagerie mentale, dialogue interne, routine pré-performance, objectifs, respiration lente, attention au présent. Chaque technique affiche son niveau de preuve et ses sources.
 - **Adaptation** :
-  - le check-in du jour (stress, sommeil, énergie) peut transformer la séance en séance allégée ;
+  - le check-in du jour (stress, sommeil, énergie) ou une séance d'entraînement très dure peut transformer la séance en séance allégée ;
   - le ressenti noté après chaque séance fait monter ou consolider le niveau ;
   - les obstacles signalés dans les débriefs de compétition orientent la semaine suivante ;
   - à J-7 d'une compétition, le programme passe en protocole compétition ;
   - un nouveau bilan toutes les 4 semaines mesure les progrès et réajuste les priorités.
 - **Jour J** : respiration d'urgence d'une minute, compte à rebours, routine personnelle.
+- **Entraînements** (dans le Carnet) : saisie manuelle ou import CSV Garmin Connect, effort ressenti, concentration et confiance, charge hebdomadaire (session-RPE) et rapprochements avec les séances Déclic, le sommeil et le stress.
 - **Carnet** de débriefs et écran **Progrès** (radar des compétences, régularité, humeur et stress, badges).
 - **Guidage vocal** optionnel pendant les séances, pour garder les yeux fermés.
 

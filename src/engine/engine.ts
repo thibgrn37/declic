@@ -1,3 +1,4 @@
+import { hardTraining } from './training';
 import { ITEMS } from '../content/assessment';
 import { SKILLS, TECHNIQUES, TECH_BY_ID, type SkillKey } from '../content/techniques';
 import { addDays, diffDays, mondayOf, todayKey } from '../state/dates';
@@ -186,6 +187,14 @@ export function suggestToday(s: State, day = todayKey()): Suggestion | null {
     return {
       techId: 'respiration', level: lvl, source: 'allegee', title: 'Séance allégée',
       reason: ci.stress >= 4 ? 'Ton check-in indique un stress élevé : on régule d’abord.' : 'Tu as peu dormi ou tu manques d’énergie : séance courte de récupération.',
+      alternative: nextIdx >= 0 ? { techId: plan.slots[nextIdx].techId, slotIndex: nextIdx } : undefined,
+    };
+  }
+  const hard = hardTraining(s, day);
+  if (hard && !doneToday) {
+    return {
+      techId: 'respiration', level: 1, source: 'allegee', title: 'Séance allégée',
+      reason: `${hard.date === day ? 'Grosse séance aujourd’hui' : 'Grosse séance hier'} (${hard.sport}, effort ${hard.rpe}/10) : une respiration lente aide à récupérer. Ton programme reprend demain.`,
       alternative: nextIdx >= 0 ? { techId: plan.slots[nextIdx].techId, slotIndex: nextIdx } : undefined,
     };
   }
