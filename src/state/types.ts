@@ -66,6 +66,8 @@ export interface Debrief {
   perf?: number;
   /** Obstacles repérés automatiquement dans le texte. */
   detected?: IssueKey[];
+  /** Séance importée d'où vient ce débrief. */
+  workoutId?: string;
 }
 
 /** Séance d'entraînement sportif, saisie à la main ou importée (Garmin). */
@@ -89,6 +91,8 @@ export interface Workout {
   source: 'manuel' | 'garmin' | 'intervals';
   /** Petit débrief fait (même si rien n'a gêné). */
   debriefed?: boolean;
+  /** Séance de match (et non d'entraînement) : elle appelle un débrief de match. */
+  match?: boolean;
 }
 
 export interface Slot {

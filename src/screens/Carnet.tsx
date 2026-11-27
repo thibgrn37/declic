@@ -83,8 +83,12 @@ export function Carnet() {
   const issue: IssueKey | '' = touchedIssue ? d.issue : detected[0] || '';
 
   const debriefWorkout = (w: Workout) => {
-    setD({ ...empty(), kind: 'entrainement', date: w.date, title: `${w.sport}, ${fmtDay(w.date)}`, good: '', perf: 0 });
-    setTouchedIssue(false); setSaved(''); setFrom(w);
+    setD({
+      ...empty(), kind: w.match ? 'competition' : 'entrainement', date: w.date, workoutId: w.id, issue: w.issue || '',
+      title: w.match ? `Match de ${w.sport.toLowerCase()}, ${fmtDay(w.date)}` : `${w.sport}, ${fmtDay(w.date)}`,
+    });
+    // L'obstacle noté dans le petit débrief est repris tel quel.
+    setTouchedIssue(!!w.issue); setSaved(''); setFrom(w);
     setView('debriefs'); window.scrollTo(0, 0);
   };
   return (
@@ -95,7 +99,7 @@ export function Carnet() {
       {view === 'training' ? <Training onDebrief={debriefWorkout} /> : <>
       <div className="card">
         <h2>Nouveau débrief</h2>
-        <p className="small muted">{from ? `Séance de ${from.sport} du ${fmtDay(from.date)} (${fmtDuration(from.durationSec)}${from.rpe ? `, effort ${from.rpe}/10` : ''}).` : 'Après une compétition ou un entraînement important. Ce que tu notes oriente tes prochaines séances.'}</p>
+        <p className="small muted">{from ? `${from.match ? 'Match' : 'Séance'} de ${from.sport.toLowerCase()} du ${fmtDay(from.date)} (${fmtDuration(from.durationSec)}${from.hrAvg ? `, FC moy ${from.hrAvg}` : ''}${from.rpe ? `, effort ${from.rpe}/10` : ''}). Le reste est pré-rempli : écris juste ton ressenti.` : 'Après une compétition ou un entraînement important. Ce que tu notes oriente tes prochaines séances.'}</p>
         <Choice label="Type" value={d.kind} onChange={(v) => set('kind', v)} options={[{ v: 'competition', label: 'Compétition' }, { v: 'entrainement', label: 'Entraînement' }]} />
         <label className="field">Événement<input type="text" id="dTitle" value={d.title} maxLength={100} onChange={(e) => set('title', e.target.value)} placeholder="Ex. Match contre Villeurbanne" /></label>
         <div className="field"><span>Ressenti global <span className="muted small" style={{ fontWeight: 400 }}>comment tu t’es senti</span></span><Dots value={d.feel} onChange={(v) => set('feel', v)} label="Ressenti global" /></div>
@@ -111,7 +115,11 @@ export function Carnet() {
         </div>
         <label className="field">Ce que je garde pour la prochaine fois<textarea id="dKeep" value={d.keep} maxLength={1000} onChange={(e) => set('keep', e.target.value)} placeholder="Une seule chose concrète" /></label>
         <button className="btn" disabled={!canSave} onClick={() => {
-          update((x) => { x.debriefs.unshift({ ...d, issue, detected, title: d.title.trim(), date: from ? d.date : todayKey() }); });
+          update((x) => {
+            x.debriefs.unshift({ ...d, issue, detected, title: d.title.trim(), date: from ? d.date : todayKey(), workoutId: from?.id });
+            const w = from && (x.workouts || []).find((y) => y.id === from.id);
+            if (w) { w.debriefed = true; if (d.kind === 'competition') w.match = true; }
+          });
           setSaved(issue ? `Obstacle noté : ${ISSUES[issue].toLowerCase()}. Tes prochaines semaines en tiennent compte.` : 'Tu le retrouves ci-dessous.');
           setD(empty());
           setTouchedIssue(false);
