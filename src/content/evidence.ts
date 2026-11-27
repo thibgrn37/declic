@@ -82,4 +82,23 @@ export const REFERENCES: Record<string, Reference> = {
     finding: 'Effet sur l’acceptation et le flow (SMD = 0,81), mais pas d’effet démontré sur l’anxiété ou la santé mentale. Résultats encore hétérogènes.',
     url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC9915077/',
   },
+  foster2001: {
+    id: 'foster2001',
+    short: 'Foster et al., 2001',
+    full: 'Foster, C., Florhaug, J. A., Franklin, J., Gottschall, L., Hrovatin, L. A., Parker, S., Doleshal, P., & Dodge, C. (2001). A new approach to monitoring exercise training. Journal of Strength and Conditioning Research, 15(1), 109–115.',
+    finding: 'Méthode session-RPE : la charge d’une séance = effort perçu (échelle CR-10, noté environ 30 minutes après) × durée en minutes. Elle suit de près les méthodes fondées sur la fréquence cardiaque.',
+  },
+  haddad2017: {
+    id: 'haddad2017',
+    short: 'Haddad et al., 2017',
+    full: 'Haddad, M., Stylianides, G., Djaoui, L., Dellal, A., & Chamari, K. (2017). Session-RPE method for training load monitoring: validity, ecological usefulness, and influencing factors. Frontiers in Neuroscience, 11, 612. doi:10.3389/fnins.2017.00612',
+    finding: 'Revue : la session-RPE est valide et fiable dans de nombreux sports, y compris les sports intermittents et de raquette, et ne demande aucun matériel. L’effort perçu dépend aussi de l’état psychologique.',
+    url: 'https://www.frontiersin.org/articles/10.3389/fnins.2017.00612/full',
+  },
+  vancutsem2017: {
+    id: 'vancutsem2017',
+    short: 'Van Cutsem et al., 2017',
+    full: 'Van Cutsem, J., Marcora, S., De Pauw, K., Bailey, S., Meeusen, R., & Roelands, B. (2017). The effects of mental fatigue on physical performance: a systematic review. Sports Medicine, 47(8), 1569–1588. doi:10.1007/s40279-016-0672-0',
+    finding: 'La fatigue mentale réduit la performance en endurance et augmente l’effort perçu, sans changer la fréquence cardiaque. D’où l’intérêt de noter l’effort ressenti à côté des données de la montre.',
+  },
 };
