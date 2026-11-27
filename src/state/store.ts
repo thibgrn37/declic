@@ -99,6 +99,7 @@ export class Store {
   private latest: State | null = null;
   private meta: Meta = { editedAt: 0, syncedAt: 0 };
   private listening = false;
+  private userId: string | null = null;
   ready = false;
   onStatus: (s: SaveStatus) => void = () => {};
   /** Appelé quand une version plus récente arrive d'un autre appareil. */
@@ -140,7 +141,8 @@ export class Store {
         if (db && id) return claudeRemote(db.collection('data/users/' + id).doc('state') as DocRef);
       } catch { /* on tente la suite */ }
     }
-    const acc = await cloud.currentAccount().catch(() => null);
+    const acc = await cloud.verifiedAccount().catch(() => null);
+    this.userId = acc?.id ?? null;
     return acc ? cloudRemote(acc.id) : null;
   }
 
@@ -204,6 +206,12 @@ export class Store {
     if (this.listening || typeof window === 'undefined') return;
     this.listening = true;
     window.addEventListener('online', () => void this.refresh());
+    // Connexion ou déconnexion venue d'ailleurs (lien reçu par e-mail, autre onglet, session expirée).
+    void cloud.onAccountChange((acc) => {
+      if (!this.ready || (acc?.id ?? null) === this.userId) return;
+      if (acc) void this.reconnect();
+      else { this.remote = null; this.userId = null; this.onStatus('appareil'); }
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') void this.refresh();
     });
@@ -256,8 +264,16 @@ export class Store {
   async signOut() {
     await cloud.signOut();
     this.remote = null;
+    this.userId = null;
     this.meta.syncedAt = 0;
     this.onStatus('appareil');
+  }
+
+  /** Envoie tout de suite les données de cet appareil (bouton « Synchroniser maintenant »). */
+  async syncNow() {
+    if (!this.remote) return this.reconnect();
+    if (this.meta.editedAt > this.meta.syncedAt) { this.dirty = true; await this.flush(); }
+    else await this.refresh();
   }
 
   async reconnect() {

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { appStore } from '../state/store';
+import { useApp } from '../app/ctx';
 import { cancelRecovery, cloudConfigured, currentAccount, onAccountChange, onRecovery, recoveryPending, resetPassword, updatePassword, type Account } from '../state/cloud';
 import './sync.css';
 import { installPrompt, isStandalone, onInstallPrompt } from '../pwa';
@@ -84,6 +85,7 @@ function SignInForm({ onDone }: { onDone?: () => void }) {
 /** Carte « Sauvegarde en ligne » de l'écran Progrès (version hébergée seulement). */
 export function SyncCard() {
   const acc = useAccount();
+  const { status } = useApp();
   const [busy, setBusy] = useState(false);
   if (!cloudConfigured) return null;
   return (
@@ -92,6 +94,11 @@ export function SyncCard() {
       {acc === undefined ? <p className="small muted">Chargement…</p> : acc ? (
         <>
           <p className="small muted">Connecté avec <b>{acc.email}</b>. Tes données se synchronisent entre ton téléphone et ton ordinateur.</p>
+          {status === 'erreur' && <p className="small errmsg" role="status">La dernière synchronisation a échoué. Tes données sont gardées sur cet appareil.</p>}
+          {status === 'compte' && <p className="small okmsg">À jour en ligne.</p>}
+          <div className="row">
+            <button className="btn soft" disabled={busy || status === 'enregistrement'} onClick={async () => { setBusy(true); await appStore.syncNow().catch(() => {}); setBusy(false); }}>Synchroniser maintenant</button>
+          </div>
           <button className="btn ghost" disabled={busy} onClick={async () => { setBusy(true); await appStore.signOut().catch(() => {}); setBusy(false); }}>Se déconnecter</button>
         </>
       ) : (

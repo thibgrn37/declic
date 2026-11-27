@@ -43,6 +43,22 @@ export async function currentAccount(): Promise<Account | null> {
   return u ? { id: u.id, email: u.email ?? '' } : null;
 }
 
+/** Comme currentAccount, mais vérifie auprès du serveur que le compte existe encore
+ *  (compte supprimé puis recréé : l'ancienne session gardée par le navigateur n'est plus valable). */
+export async function verifiedAccount(): Promise<Account | null> {
+  const acc = await currentAccount();
+  if (!acc) return null;
+  const sb = await client();
+  const { data, error } = await sb.auth.getUser();
+  if (data.user) return { id: data.user.id, email: data.user.email ?? '' };
+  const status = (error as { status?: number } | null)?.status ?? 0;
+  if (status >= 400 && status < 500) {
+    await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+    return null;
+  }
+  return acc; // hors ligne : on garde la session connue
+}
+
 export async function onAccountChange(cb: (a: Account | null) => void): Promise<() => void> {
   if (!cloudConfigured) return () => {};
   const sb = await client();
