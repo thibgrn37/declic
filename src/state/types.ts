@@ -122,5 +122,6 @@ export interface State {
   reminders?: ReminderSettings;
   workouts?: Workout[];
   /** Liaison intervals.icu : clé API personnelle, heure de la dernière synchro (ms). */
-  intervals?: { apiKey: string; lastSync: number; error?: string };
+  /** `sports` : sports gardés à l'import (squash par défaut) ; `seen` : sports reçus d'intervals.icu, gardés ou non. */
+  intervals?: { apiKey: string; lastSync: number; error?: string; sports?: string[]; seen?: string[] };
 }
