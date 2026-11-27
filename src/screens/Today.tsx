@@ -77,14 +77,18 @@ export function Today() {
             const tech = TECH_BY_ID[sl.techId];
             const isNext = !sl.doneDate && plan.slots.findIndex((x) => !x.doneDate) === k;
             return (
-              <div key={k} className={`slot ${sl.doneDate ? 'done' : isNext ? 'next' : ''}`}>
+              <button type="button" key={k} className={`slot ${sl.doneDate ? 'done' : isNext ? 'next' : ''}`}
+                aria-label={`${sl.doneDate ? 'Refaire' : 'Ouvrir'} la séance ${tech.name}`}
+                onClick={() => play(sl.doneDate
+                  ? { techId: sl.techId, level: levelOf(s, sl.techId), source: 'libre' }
+                  : { techId: sl.techId, level: levelOf(s, sl.techId), source: 'plan', slotIndex: k })}>
                 <span className="mark">{sl.doneDate ? '✓' : k + 1}</span>
-                <div>
-                  <div className="row between"><b>{tech.name}</b><span className="small muted">{sl.doneDate ? fmtWeekday(sl.doneDate) : `niveau ${levelOf(s, sl.techId)}`}</span></div>
+                <span className="slot-body">
+                  <span className="row between"><b>{tech.name}</b><span className="small muted">{sl.doneDate ? `${fmtWeekday(sl.doneDate)} · refaire` : `niveau ${levelOf(s, sl.techId)}`}</span></span>
                   <span className="small muted">{sl.reason}</span>
-                  {!sl.doneDate && !isNext && <div><button className="link small" onClick={() => play({ techId: sl.techId, level: levelOf(s, sl.techId), source: 'plan', slotIndex: k })}>Faire maintenant</button></div>}
-                </div>
-              </div>
+                </span>
+                <span className="chev" aria-hidden="true">›</span>
+              </button>
             );
           })}
         </div>
