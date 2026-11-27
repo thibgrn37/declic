@@ -108,6 +108,16 @@ function QuickDebrief({ w, onDone }: { w: Workout; onDone: (msg: string) => void
   );
 }
 
+const pl = (n: number, w: string) => `${n} ${w}${n > 1 ? 's' : ''}`;
+/** Dit clairement ce qui est arrivé : nouvelles séances, et celles déjà présentes (non dupliquées). */
+function syncMessage(r: { added: number; already: number; received: number }, empty: string) {
+  if (!r.received) return empty;
+  const parts = [];
+  if (r.added) parts.push(`${pl(r.added, 'nouvelle séance')} récupérée${r.added > 1 ? 's' : ''}`);
+  if (r.already) parts.push(`${pl(r.already, 'séance')} déjà dans Déclic, non dupliquée${r.already > 1 ? 's' : ''}`);
+  return parts.join(' · ') + '.';
+}
+
 /** Connexion intervals.icu : Garmin Connect y envoie chaque activité, Déclic les récupère toutes seules. */
 function IntervalsCard({ onMsg }: { onMsg: (m: string) => void }) {
   const { s, update } = useApp();
@@ -116,7 +126,7 @@ function IntervalsCard({ onMsg }: { onMsg: (m: string) => void }) {
   if (!intervalsAvailable()) return null; // version artifact : pas de serveur relais
   const link = s.intervals;
   const report = (r: SyncResult, empty: string) =>
-    onMsg('error' in r ? r.error : r.added ? `${r.added} nouvelle${r.added > 1 ? 's' : ''} séance${r.added > 1 ? 's' : ''} récupérée${r.added > 1 ? 's' : ''}.` : empty);
+    onMsg('error' in r ? r.error : syncMessage(r, empty));
   const connect = async () => {
     setBusy(true);
     report(await connectIntervals(key.trim(), s, update), 'Connecté. Aucune séance ces 30 derniers jours pour l’instant.');
@@ -182,7 +192,8 @@ export function Training({ onDebrief }: { onDebrief: (w: Workout) => void }) {
     if (!found.length) { setImportMsg('Aucune séance reconnue. Choisis un fichier .fit, .zip, .tcx ou .csv exporté depuis Garmin Connect.'); return; }
     let added = 0;
     update((x) => { const r = mergeWorkouts(x.workouts || [], found); x.workouts = r.list; added = r.added; });
-    setImportMsg(added ? `${added} séance${added > 1 ? 's' : ''} importée${added > 1 ? 's' : ''}.${added ? ' Un petit débrief t’attend juste en dessous.' : ''}` : 'Ces séances sont déjà dans Déclic.');
+    const already = found.length - added;
+    setImportMsg(added ? `${pl(added, 'séance')} importée${added > 1 ? 's' : ''}${already ? `, ${already} déjà présente${already > 1 ? 's' : ''}` : ''}. Un petit débrief t’attend juste en dessous.` : 'Ces séances sont déjà dans Déclic.');
   };
   const pending = pendingDebriefs(s);
 

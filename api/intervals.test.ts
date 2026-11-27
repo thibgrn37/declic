@@ -18,7 +18,7 @@ describe('intervals.icu', () => {
       return json([squash, { id: 2, start_date_local: '2026-11-27T13:32:00', type: 'Squash', elapsed_time: 0 }]);
     };
     const r = await handleIntervals({ apiKey: 'abcdef123456', oldest: '2026-11-20' }, f, Date.UTC(2026, 10, 28));
-    expect(url).toBe('https://intervals.icu/api/v1/athlete/0/activities?oldest=2026-11-20&newest=2026-11-29');
+    expect(url).toBe('https://intervals.icu/api/v1/athlete/0/activities?oldest=2026-11-20&newest=2026-11-30');
     expect(auth).toBe(`Basic ${btoa('API_KEY:abcdef123456')}`);
     expect(r.ok && r.workouts).toHaveLength(1); // l'activité sans durée est ignorée
   });

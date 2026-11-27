@@ -13,15 +13,15 @@ const SYNC_EVERY_MS = 10 * 60 * 1000;
 export const intervalsAvailable = () =>
   typeof location !== 'undefined' && location.protocol.startsWith('http') && !(window as unknown as { claude?: unknown }).claude;
 
-/** Ajoute les séances reçues sans doublon. Retourne le nombre de nouvelles. */
-export function absorb(s: State, list: Workout[]): number {
-  const known = new Set((s.workouts || []).map((w) => w.id));
-  const r = mergeWorkouts(s.workouts || [], list.filter((w) => !known.has(w.id)));
+/** Ajoute les séances reçues sans doublon, en complétant celles déjà présentes. */
+export function absorb(s: State, list: Workout[]): { added: number; already: number } {
+  const r = mergeWorkouts(s.workouts || [], list);
   s.workouts = r.list;
-  return r.added;
+  return { added: r.added, already: list.length - r.added };
 }
 
-export type SyncResult = { added: number } | { error: string };
+/** `received` : séances renvoyées par intervals.icu ; `already` : celles qui étaient déjà dans Déclic. */
+export type SyncResult = { added: number; already: number; received: number } | { error: string };
 
 async function fetchWorkouts(apiKey: string, oldest: string, sport?: string): Promise<IcuReply> {
   let r: Response;
@@ -42,9 +42,9 @@ export async function connectIntervals(apiKey: string, s: State, update: (fn: (s
   try {
     const r = await fetchWorkouts(apiKey, addDays(todayKey(), -30), profileSport(s));
     if (!r.ok) return { error: r.error };
-    let added = 0;
-    update((x) => { added = absorb(x, r.workouts); x.intervals = { apiKey, lastSync: Date.now() }; });
-    return { added };
+    let res = { added: 0, already: 0 };
+    update((x) => { res = absorb(x, r.workouts); x.intervals = { apiKey, lastSync: Date.now() }; });
+    return { ...res, received: r.workouts.length };
   } catch (e) {
     return { error: `Connexion impossible (${(e as Error).message}).` };
   }
@@ -63,9 +63,9 @@ export async function syncIntervals(s: State, update: (fn: (s: State) => void) =
       if (r.status === 401) update((x) => { if (x.intervals) x.intervals.error = r.error; });
       return { error: r.error };
     }
-    let added = 0;
-    update((x) => { added = absorb(x, r.workouts); if (x.intervals) { x.intervals.lastSync = Date.now(); delete x.intervals.error; } });
-    return { added };
+    let res = { added: 0, already: 0 };
+    update((x) => { res = absorb(x, r.workouts); if (x.intervals) { x.intervals.lastSync = Date.now(); delete x.intervals.error; } });
+    return { ...res, received: r.workouts.length };
   } catch {
     return { error: 'intervals.icu injoignable pour le moment.' };
   }

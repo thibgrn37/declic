@@ -176,10 +176,33 @@ export function parseGarminCsv(text: string): Workout[] {
   return out;
 }
 
-/** Ajoute les séances importées en ignorant celles déjà présentes (même date, heure et durée à la minute près). */
-export function mergeWorkouts(existing: Workout[], incoming: Workout[]): { list: Workout[]; added: number } {
-  const key = (w: Workout) => `${w.date} ${w.time} ${Math.round(w.durationSec / 60)}`;
-  const seen = new Set(existing.map(key));
-  const fresh = incoming.filter((w) => !seen.has(key(w)) && (seen.add(key(w)), true));
-  return { list: sortWorkouts([...existing, ...fresh]), added: fresh.length };
+const minutesOf = (hhmm: string) => (hhmm ? Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5)) : null);
+
+/** Même séance vue par deux sources (saisie à la main, fichier, intervals.icu) : même jour, départ à 10 min près, durée à 5 min près. */
+export function sameSession(a: Workout, b: Workout): boolean {
+  if (a.id === b.id) return true;
+  if (a.date !== b.date) return false;
+  const ta = minutesOf(a.time), tb = minutesOf(b.time);
+  if (ta !== null && tb !== null && Math.abs(ta - tb) > 10) return false;
+  return Math.abs(a.durationSec - b.durationSec) <= 300;
+}
+
+/**
+ * Ajoute les séances importées. Une séance déjà présente n'est pas dupliquée : elle est complétée
+ * avec ce qui lui manque (heure, fréquence cardiaque, effort), sans toucher au débrief déjà noté.
+ */
+export function mergeWorkouts(existing: Workout[], incoming: Workout[]): { list: Workout[]; added: number; completed: number } {
+  const list = existing.map((w) => ({ ...w }));
+  let added = 0, completed = 0;
+  for (const w of incoming) {
+    const twin = list.find((x) => sameSession(x, w));
+    if (!twin) { list.push(w); added++; continue; }
+    let changed = false;
+    if (!twin.time && w.time) { twin.time = w.time; changed = true; }
+    if (!twin.hrAvg && w.hrAvg) { twin.hrAvg = w.hrAvg; changed = true; }
+    if (!twin.hrMax && w.hrMax) { twin.hrMax = w.hrMax; changed = true; }
+    if (!twin.rpe && w.rpe) { twin.rpe = w.rpe; changed = true; }
+    if (changed) completed++;
+  }
+  return { list: sortWorkouts(list), added, completed };
 }
