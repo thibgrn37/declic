@@ -6,7 +6,7 @@ import { addDays, fmtDay, parseKey, todayKey } from '../state/dates';
 import type { Workout } from '../state/types';
 import { useApp } from '../app/ctx';
 import { readGarminFile } from '../engine/garminFiles';
-import { connectIntervals, intervalsAvailable, syncIntervals, type SyncResult } from '../sync/intervals';
+import { connectIntervals, importedSports, intervalsAvailable, pruneUnfollowed, syncIntervals, type SyncResult } from '../sync/intervals';
 import { ISSUES_SHORT } from '../engine/engine';
 import type { IssueKey } from '../state/types';
 import { Dots, RefList } from '../components/ui';
@@ -110,12 +110,43 @@ function QuickDebrief({ w, onDone }: { w: Workout; onDone: (msg: string) => void
 
 const pl = (n: number, w: string) => `${n} ${w}${n > 1 ? 's' : ''}`;
 /** Dit clairement ce qui est arrivé : nouvelles séances, et celles déjà présentes (non dupliquées). */
-function syncMessage(r: { added: number; already: number; received: number }, empty: string) {
+function syncMessage(r: { added: number; already: number; skipped: number; received: number }, empty: string) {
   if (!r.received) return empty;
   const parts = [];
-  if (r.added) parts.push(`${pl(r.added, 'nouvelle séance')} récupérée${r.added > 1 ? 's' : ''}`);
+  if (r.added) { const x = r.added > 1 ? 's' : ''; parts.push(`${r.added} nouvelle${x} séance${x} récupérée${x}`); }
   if (r.already) parts.push(`${pl(r.already, 'séance')} déjà dans Déclic, non dupliquée${r.already > 1 ? 's' : ''}`);
-  return parts.join(' · ') + '.';
+  if (r.skipped) parts.push(`${pl(r.skipped, 'séance')} d’un autre sport ignorée${r.skipped > 1 ? 's' : ''}`);
+  return (parts.length ? parts.join(' · ') : empty.replace(/\.$/, '')) + '.';
+}
+
+/** Choix des sports gardés à l'import automatique. Décocher un sport retire ses séances déjà importées. */
+function SportsFilter({ onMsg }: { onMsg: (m: string) => void }) {
+  const { s, update } = useApp();
+  const chosen = importedSports(s);
+  const options = [...new Set([...chosen, ...(s.intervals?.seen || [])])];
+  const toggle = (sport: string) => {
+    const on = chosen.includes(sport);
+    if (on && chosen.length === 1) return onMsg('Garde au moins un sport.');
+    let removed = 0;
+    update((x) => {
+      if (!x.intervals) return;
+      x.intervals.sports = on ? chosen.filter((y) => y !== sport) : [...chosen, sport];
+      removed = pruneUnfollowed(x);
+      // Réactivé : la prochaine récupération repart de 30 jours pour retrouver ses séances.
+      if (!on) x.intervals.lastSync = 0;
+    });
+    onMsg(on ? `${sport} n’est plus importé${removed ? ` : ${pl(removed, 'séance')} retirée${removed > 1 ? 's' : ''}` : ''}.` : `${sport} sera importé dès la prochaine récupération.`);
+  };
+  return (
+    <div className="field"><span>Sports importés</span>
+      <div className="seg" role="group" aria-label="Sports importés">
+        {options.map((x) => (
+          <button type="button" key={x} className={chosen.includes(x) ? 'on' : ''} aria-pressed={chosen.includes(x)} onClick={() => toggle(x)}>{x}</button>
+        ))}
+      </div>
+      {options.length === 1 && <span className="small muted" style={{ fontWeight: 400 }}>Les autres sports reçus de Garmin apparaîtront ici, à cocher si tu veux les suivre.</span>}
+    </div>
+  );
 }
 
 /** Connexion intervals.icu : Garmin Connect y envoie chaque activité, Déclic les récupère toutes seules. */
@@ -146,11 +177,12 @@ function IntervalsCard({ onMsg }: { onMsg: (m: string) => void }) {
         </>
       ) : (
         <>
-          <p className="small muted">Dernière récupération {link.lastSync ? new Date(link.lastSync).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' }) : 'jamais'}. Les nouvelles séances arrivent quand tu ouvres l’appli.</p>
+          <p className="small muted">Dernière récupération {link.lastSync ? new Date(link.lastSync).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' }) : 'à faire'}. Les nouvelles séances arrivent quand tu ouvres l’appli.</p>
           <div className="row">
             <button className="btn soft" disabled={busy} onClick={sync}>{busy ? 'Récupération…' : 'Récupérer maintenant'}</button>
             <button className="link small" style={{ color: 'var(--muted)' }} onClick={() => update((x) => { delete x.intervals; })}>Déconnecter</button>
           </div>
+          <SportsFilter onMsg={onMsg} />
         </>
       )}
     </div>
