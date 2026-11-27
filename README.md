@@ -22,7 +22,12 @@ Les bases scientifiques et les limites sont détaillées dans [docs/SCIENCE.md](
 
 ## Stack
 
-Vite, React 18 et TypeScript, sans serveur. Les données restent dans le navigateur (localStorage). Quand l'appli tourne comme artifact claude.ai, elle les enregistre aussi dans le compte de l'utilisateur.
+Vite, React 18 et TypeScript, sans serveur à maintenir. Les données sont toujours enregistrées dans le navigateur (localStorage), plus une copie distante :
+
+- **site hébergé (Vercel)** : compte Supabase, synchronisé entre téléphone et ordinateur ; l'appli est installable (PWA) et s'ouvre hors ligne ;
+- **artifact claude.ai** : compte claude.ai de l'utilisateur.
+
+Mise en ligne pas à pas : [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md).
 
 ```
 src/
@@ -38,6 +43,6 @@ src/
 npm install
 npm run dev             # serveur de développement
 npm test                # tests du moteur d'adaptation
-npm run build           # build statique dans dist/ (déployable sur Vercel ou Netlify)
+npm run build           # site statique dans dist/ (Vercel), avec manifest et service worker
 npm run build:artifact  # un seul fichier HTML autonome dans dist-single/
 ```
