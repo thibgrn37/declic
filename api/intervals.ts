@@ -53,7 +53,7 @@ export async function handleIntervals(body: unknown, f: FetchFn = fetch, now = D
   const minOldest = isoDay(now - 180 * 86400e3);
   const wanted = typeof b.oldest === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.oldest) ? b.oldest : isoDay(now - 30 * 86400e3);
   const oldest = wanted < minOldest ? minOldest : wanted;
-  const newest = isoDay(now + 86400e3);
+  const newest = isoDay(now + 2 * 86400e3); // marge pour le décalage horaire : la séance du jour est toujours incluse
   try {
     const r = await f(`https://intervals.icu/api/v1/athlete/0/activities?oldest=${oldest}&newest=${newest}`, {
       headers: {

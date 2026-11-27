@@ -52,6 +52,19 @@ describe('import Garmin', () => {
     expect(r.added).toBe(1);
     expect(r.list).toHaveLength(2);
   });
+  it('reconnaît une séance saisie à la main, même à quelques minutes près, et la complète', () => {
+    const manual = squash({ id: 'm1', time: '12:32', durationSec: 3600, hrAvg: undefined, hrMax: undefined, rpe: 7, focus: 4 });
+    const fromIcu = squash({ id: 'i-1', time: '12:30', durationSec: 3585, hrAvg: 148, hrMax: 176, source: 'intervals' });
+    const r = mergeWorkouts([manual], [fromIcu]);
+    expect(r.added).toBe(0);
+    expect(r.completed).toBe(1);
+    expect(r.list).toHaveLength(1);
+    expect(r.list[0]).toMatchObject({ id: 'm1', hrAvg: 148, hrMax: 176, rpe: 7, focus: 4 });
+  });
+  it('garde deux séances distinctes le même jour', () => {
+    const r = mergeWorkouts([squash()], [squash({ id: 'b', time: '13:32', durationSec: 926 })]);
+    expect(r.added).toBe(1);
+  });
 });
 
 describe('lien avec le mental', () => {
