@@ -3,7 +3,8 @@ import { TECH_BY_ID, URGENCE_STEPS, type Step } from '../content/techniques';
 import { adapt, checkBadges, ensureWeek, levelOf } from '../engine/engine';
 import { todayKey } from '../state/dates';
 import { useApp, type PlayRequest } from '../app/ctx';
-import { Dots, EvidenceTag, fill } from '../components/ui';
+import { Choice, Dots, EvidenceTag, fill } from '../components/ui';
+import { AMBIENTS, ambient } from '../audio/ambient';
 
 const ROUTINE_IDEAS = ['Expiration longue', 'Dire mon mot-clé', 'Voir le geste réussi', 'Regard sur un point précis', 'Geste déclencheur (taper la raquette, ajuster le gant…)'];
 
@@ -31,13 +32,22 @@ export function Player({ req, onClose }: { req: PlayRequest; onClose: () => void
   const next = () => {
     if (i < steps.length - 1) setI(i + 1);
     else if (isUrgence) finishUrgence();
-    else setPhase('rate');
+    else { ambient.stop(); setPhase('rate'); }
   };
 
-  useEffect(() => () => app.stopSpeak(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { app.stopSpeak(); ambient.stop(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const spokeFirst = useRef(false);
   useEffect(() => {
-    if (phase === 'run' && voice && app.speak) app.speak(fill(steps[i].text, s));
+    if (phase !== 'run' || !voice || !app.speak) return;
+    if (i === 0 && spokeFirst.current) return; // déjà lu au clic sur « Démarrer »
+    app.speak(fill(steps[i].text, s));
   }, [i, phase, voice]); // eslint-disable-line react-hooks/exhaustive-deps
+  const start = () => {
+    ambient.start(s.ambient || 'none'); // dans le clic, sinon le navigateur bloque le son
+    // Lire la première consigne directement dans le clic : certains lecteurs n'autorisent la voix qu'après un geste.
+    if (voice && app.speak) { app.speak(fill(steps[0].text, s)); spokeFirst.current = true; }
+    setPhase('run');
+  };
 
   function finishUrgence() {
     update((st) => { const t = todayKey(); st.days[t] = (st.days[t] || 0) + 1; });
@@ -64,7 +74,7 @@ export function Player({ req, onClose }: { req: PlayRequest; onClose: () => void
     setPhase('done');
   }
 
-  const close = () => { app.stopSpeak(); onClose(); };
+  const close = () => { app.stopSpeak(); ambient.stop(); onClose(); };
 
   if (phase === 'intro' && tech && level) {
     return (
@@ -80,7 +90,13 @@ export function Player({ req, onClose }: { req: PlayRequest; onClose: () => void
               <input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} /> Guidage vocal (pour garder les yeux fermés)
             </label>
           )}
-          <button className="btn" style={{ padding: '14px 28px' }} onClick={() => setPhase('run')}>Démarrer</button>
+          {app.speak && voice && (
+            <p className="small muted">Voix et vitesse se règlent dans l’onglet Progrès.</p>
+          )}
+          <div className="field" style={{ maxWidth: 360 }}><span className="small">Fond sonore</span>
+            <Choice label="Fond sonore" value={s.ambient || 'none'} onChange={(k) => update((x) => { x.ambient = k; })} options={AMBIENTS.map((a) => ({ v: a.v, label: a.label }))} />
+          </div>
+          <button className="btn" style={{ padding: '14px 28px' }} onClick={start}>Démarrer</button>
         </div>
       </div></div>
     );

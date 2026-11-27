@@ -2,7 +2,7 @@
 :root {
   --bg: #EDF0F5; --surface: #FFFFFF; --surface-2: #F4F6FA; --ink: #0F1B2D; --muted: #5A6678; --line: #D6DCE5;
   --accent: #2346FF; --accent-soft: #E3E8FF; --on-accent: #FFFFFF; --gold: #B57A06; --gold-soft: #FBEFD2;
-  --good: #1C8F61; --good-soft: #DDF3E9; --warn: #D2452A;
+  --good: #1C8F61; --good-soft: #DDF3E9; --warn: #D2452A; --violet: #7A4FE0;
   --f-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   --r: 14px;
@@ -12,13 +12,13 @@
   :root:not([data-theme="light"]) {
     --bg: #0A111E; --surface: #121B2C; --surface-2: #18233A; --ink: #E7ECF4; --muted: #93A0B6; --line: #26334C;
     --accent: #7088FF; --accent-soft: #1E2A55; --on-accent: #0A111E; --gold: #F0B647; --gold-soft: #3A2E12;
-    --good: #3CC48C; --good-soft: #12352A; --warn: #FF7A5E; color-scheme: dark;
+    --good: #3CC48C; --good-soft: #12352A; --warn: #FF7A5E; --violet: #A98BFF; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0A111E; --surface: #121B2C; --surface-2: #18233A; --ink: #E7ECF4; --muted: #93A0B6; --line: #26334C;
   --accent: #7088FF; --accent-soft: #1E2A55; --on-accent: #0A111E; --gold: #F0B647; --gold-soft: #3A2E12;
-  --good: #3CC48C; --good-soft: #12352A; --warn: #FF7A5E; color-scheme: dark;
+  --good: #3CC48C; --good-soft: #12352A; --warn: #FF7A5E; --violet: #A98BFF; color-scheme: dark;
 }
 html, body { height: 100%; }
 body {

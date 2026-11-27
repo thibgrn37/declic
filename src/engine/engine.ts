@@ -64,9 +64,16 @@ export function priorities(s: State, day = todayKey()): { skill: SkillKey; score
   const base = a ? { ...a.scores } : { stress: 50, confiance: 50, concentration: 50, dialogue: 50, objectifs: 50 };
   const flagged = new Set<SkillKey>();
   for (const d of s.debriefs) {
-    if (d.issue && diffDays(d.date, day) <= 21) {
+    if (diffDays(d.date, day) > 21) continue;
+    if (d.issue) {
       const k = ISSUE_SKILL[d.issue];
       base[k] -= 12;
+      flagged.add(k);
+    }
+    for (const det of d.detected || []) {
+      if (det === d.issue) continue;
+      const k = ISSUE_SKILL[det];
+      base[k] -= 6; // repéré dans le texte : poids plus faible qu'un obstacle choisi
       flagged.add(k);
     }
   }

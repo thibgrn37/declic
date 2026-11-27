@@ -6,6 +6,9 @@ import type { Profile } from '../state/types';
 import { useApp } from '../app/ctx';
 import { Header, Medal, Radar } from '../components/ui';
 import { ProfileForm, SkillBars } from './Onboarding';
+import { VoiceCard } from '../components/VoiceCard';
+import { AssessmentTrend } from '../components/AssessmentTrend';
+import { RemindersCard } from '../components/Reminders';
 import { InstallCard, SyncCard } from '../components/Sync';
 
 const STATUS: Record<string, string> = {
@@ -91,6 +94,8 @@ export function Progres() {
           <Radar current={a.scores} first={s.assessments.length > 1 ? first.scores : undefined} />
           {s.assessments.length > 1 && <p className="small muted">En pointillé : ton premier bilan ({fmtDay(first.date)}).</p>}
           <SkillBars a={a} prev={s.assessments.length > 1 ? first : undefined} />
+          <h3>Évolution</h3>
+          <AssessmentTrend />
           <button className="btn ghost small" onClick={app.startReassess}>Refaire le bilan</button>
         </div>
       )}
@@ -128,6 +133,8 @@ export function Progres() {
           <p className="small muted">{s.profile?.name || 'Sans prénom'} · {s.profile?.sport} · {s.profile?.perWeek} séances par semaine</p>
         )}
       </div>
+      <RemindersCard />
+      <VoiceCard />
       <div className="card">
         <h3>Repartir de zéro</h3>
         <p className="small muted">Efface ton bilan, tes séances, tes check-ins et tes débriefs.</p>

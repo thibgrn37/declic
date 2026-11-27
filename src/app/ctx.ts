@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { State } from '../state/types';
 import type { SaveStatus } from '../state/store';
+import type { Voice } from '../audio/voice';
 
 export type Tab = 'today' | 'programme' | 'jourj' | 'carnet' | 'progres';
 
@@ -20,6 +21,7 @@ export interface AppCtx {
   status: SaveStatus;
   speak: ((text: string) => void) | null;
   stopSpeak: () => void;
+  voice: Voice;
   startReassess: () => void;
 }
 

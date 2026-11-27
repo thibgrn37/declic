@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Ctx, type AppCtx, type PlayRequest, type Tab } from './app/ctx';
 import { Icon } from './components/ui';
 import { ensureWeek } from './engine/engine';
+import { DEFAULT_VOICE, Voice, type ClaudeTts } from './audio/voice';
 import { appStore, freshState, type SaveStatus } from './state/store';
 import { cloudConfigured } from './state/cloud';
 import { SignInBanner } from './components/Sync';
@@ -16,8 +17,6 @@ import { Today } from './screens/Today';
 
 const TABS: [Tab, string][] = [['today', 'Aujourd’hui'], ['programme', 'Programme'], ['jourj', 'Jour J'], ['carnet', 'Carnet'], ['progres', 'Progrès']];
 
-type Speaker = { speak(t: string, o?: object): Promise<void>; stop(): void };
-
 export default function App() {
   const store = appStore;
   const ref = useRef<State>(store.readLocal() || freshState());
@@ -27,7 +26,8 @@ export default function App() {
   const [playing, setPlaying] = useState<(PlayRequest & { n: number }) | null>(null);
   const playN = useRef(0);
   const [reassess, setReassess] = useState(false);
-  const [tts, setTts] = useState<Speaker | null>(null);
+  const voice = useMemo(() => new Voice(), []);
+  const [, setVoiceReady] = useState(false);
   const rerender = () => setTick((n) => n + 1);
 
   useEffect(() => {
@@ -39,9 +39,11 @@ export default function App() {
       if (remote) ref.current = remote;
       rerender();
     });
-    const w = window as unknown as { claude?: { use(n: string): Promise<Speaker | null> } };
-    w.claude?.use('tts').then((t) => setTts(t)).catch(() => {});
-  }, [store]);
+    const w = window as unknown as { claude?: { use(n: string): Promise<ClaudeTts | null> } };
+    w.claude?.use('tts').then((t) => { voice.tts = t; setVoiceReady(true); }).catch(() => {});
+    // Les voix du système arrivent parfois après le chargement.
+    if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = () => setVoiceReady((x) => !x);
+  }, [store, voice]);
 
   const update = useCallback((fn: (s: State) => void) => {
     fn(ref.current);
@@ -66,25 +68,12 @@ export default function App() {
     }
   });
 
-  const speak = useMemo(() => {
-    if (tts) return (text: string) => { tts.speak(text, { language: 'fr' }).catch(() => {}); };
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      return (text: string) => {
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'fr-FR';
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(u);
-      };
-    }
-    return null;
-  }, [tts]);
-  const stopSpeak = useCallback(() => {
-    try { tts?.stop(); } catch { /* rien */ }
-    try { window.speechSynthesis?.cancel(); } catch { /* rien */ }
-  }, [tts]);
+  voice.settings = s.voice || DEFAULT_VOICE;
+  const speak = voice.available ? (text: string) => voice.speak(text) : null;
+  const stopSpeak = useCallback(() => voice.stop(), [voice]);
 
   const ctx: AppCtx = {
-    s, update, replace, status, speak, stopSpeak,
+    s, update, replace, status, speak, stopSpeak, voice,
     play: (r) => { playN.current += 1; setPlaying({ ...r, n: playN.current }); },
     go: (t) => { setTab(t); window.scrollTo(0, 0); },
     startReassess: () => setReassess(true),

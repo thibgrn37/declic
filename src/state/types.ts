@@ -1,4 +1,7 @@
 import type { SkillKey, SportType, PersonalField } from '../content/techniques';
+import type { VoiceSettings } from '../audio/voice';
+import type { AmbientKind } from '../audio/ambient';
+import type { ReminderSettings } from '../components/Reminders';
 
 export interface Profile {
   name: string;
@@ -59,6 +62,10 @@ export interface Debrief {
   bad: string;
   keep: string;
   issue: IssueKey | '';
+  /** Performance perçue, 1 à 5. */
+  perf?: number;
+  /** Obstacles repérés automatiquement dans le texte. */
+  detected?: IssueKey[];
 }
 
 export interface Slot {
@@ -87,4 +94,7 @@ export interface State {
   plans: Record<string, WeekPlan>;
   days: Record<string, number>;
   badges: string[];
+  voice?: VoiceSettings;
+  ambient?: AmbientKind;
+  reminders?: ReminderSettings;
 }
