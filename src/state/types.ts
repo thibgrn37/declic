@@ -53,6 +53,19 @@ export interface Checkin {
 
 export type IssueKey = 'stress' | 'pensees' | 'attention' | 'motivation' | 'confiance';
 
+/** Moment où un match a basculé (squash). */
+export type TurningKey = 'mene' | 'avance' | 'fin_jeu' | 'arbitre' | 'physique' | 'adversaire';
+
+/** Données de match : adversaire, score jeu par jeu, moment clé. */
+export interface MatchInfo {
+  opponent: string;
+  /** Score de chaque jeu, [moi, adversaire]. */
+  games: [number, number][];
+  turning?: TurningKey;
+  /** Match repris de Squashnet. */
+  source?: 'squashnet';
+}
+
 export interface Debrief {
   date: string;
   title: string;
@@ -68,6 +81,8 @@ export interface Debrief {
   detected?: IssueKey[];
   /** Séance importée d'où vient ce débrief. */
   workoutId?: string;
+  /** Match (adversaire, score, moment clé). */
+  match?: MatchInfo;
 }
 
 /** Séance d'entraînement sportif, saisie à la main ou importée (Garmin). */
