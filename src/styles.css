@@ -97,7 +97,12 @@ textarea { min-height: 72px; resize: vertical; }
 
 /* Semaine */
 .week { display: flex; flex-direction: column; gap: 8px; }
-.slot { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+.slot { display: grid; grid-template-columns: 28px 1fr 14px; gap: 10px; align-items: start; text-align: left; border: 1px solid transparent; background: none; padding: 8px; margin: 0 -8px; width: calc(100% + 16px); border-radius: 12px; cursor: pointer; }
+.slot:hover, .slot:focus-visible { background: var(--surface-2); border-color: var(--line); }
+.slot:active { transform: scale(.99); }
+.slot-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.slot .chev { align-self: center; color: var(--muted); font-size: 1.3rem; line-height: 1; }
+.slot.next .chev { color: var(--accent); }
 .slot .mark { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: .8rem; font-weight: 700; color: var(--muted); }
 .slot.done .mark { background: var(--good); border-color: var(--good); color: #fff; }
 .slot.next .mark { border-color: var(--accent); color: var(--accent); }
