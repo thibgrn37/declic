@@ -30,3 +30,12 @@ create policy "modification de ses données" on public.declic_state
 drop policy if exists "suppression de ses données" on public.declic_state;
 create policy "suppression de ses données" on public.declic_state
   for delete using (auth.uid() = user_id);
+
+-- Droits d'accès via l'API (les projets Supabase récents ne les donnent plus
+-- automatiquement aux nouvelles tables). Les règles ci-dessus limitent quand même
+-- chaque utilisateur à sa propre ligne.
+grant select, insert, update, delete on public.declic_state to authenticated;
+revoke all on public.declic_state from anon;
+
+-- Prise en compte immédiate par l'API.
+notify pgrst, 'reload schema';

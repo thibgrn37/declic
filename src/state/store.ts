@@ -100,6 +100,8 @@ export class Store {
   private meta: Meta = { editedAt: 0, syncedAt: 0 };
   private listening = false;
   private userId: string | null = null;
+  /** Explication de la dernière erreur de synchro, affichée dans Progrès. */
+  lastError = '';
   ready = false;
   onStatus: (s: SaveStatus) => void = () => {};
   /** Appelé quand une version plus récente arrive d'un autre appareil. */
@@ -167,10 +169,12 @@ export class Store {
         await this.flush();
       } else {
         if (r) this.meta.syncedAt = r.at;
+        this.lastError = '';
         this.onStatus('compte');
       }
       return null;
-    } catch {
+    } catch (e) {
+      this.lastError = cloud.explainError(e);
       this.onStatus('erreur');
       return null;
     }
@@ -239,8 +243,10 @@ export class Store {
         await this.remote.save(this.latest, at);
         this.meta.syncedAt = Math.max(this.meta.syncedAt, at);
         try { localStorage.setItem(META_KEY, JSON.stringify(this.meta)); } catch { /* rien */ }
+        this.lastError = '';
         this.onStatus('compte');
-      } catch {
+      } catch (e) {
+        this.lastError = cloud.explainError(e);
         this.onStatus('erreur');
         break;
       }
