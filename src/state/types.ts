@@ -53,6 +53,35 @@ export interface Checkin {
 
 export type IssueKey = 'stress' | 'pensees' | 'attention' | 'motivation' | 'confiance';
 
+/** Moment où un match a basculé (squash). */
+export type TurningKey = 'mene' | 'avance' | 'fin_jeu' | 'arbitre' | 'physique' | 'adversaire';
+
+/** Données de match : adversaire, score jeu par jeu, moment clé. */
+export interface MatchInfo {
+  opponent: string;
+  /** Score de chaque jeu, [moi, adversaire]. */
+  games: [number, number][];
+  turning?: TurningKey;
+  /** Match repris de Squashnet. */
+  source?: 'squashnet';
+}
+
+/** Match officiel repris de Squashnet (Mon classement > Mes matchs). */
+export interface SquashnetMatch {
+  date: string; // AAAA-MM-JJ
+  event: string;
+  opponent: string;
+  /** Classement de l'adversaire à ce moment (ex. 3B) et son rang. */
+  oppClass: string;
+  oppRank: number;
+  /** Ton classement et ton rang à ce moment. */
+  myClass: string;
+  myRank: number;
+  games: [number, number][];
+  /** WO (forfait) ou Ab (abandon) : le score ne dit pas qui a gagné. */
+  special?: 'WO' | 'Ab';
+}
+
 export interface Debrief {
   date: string;
   title: string;
@@ -68,6 +97,8 @@ export interface Debrief {
   detected?: IssueKey[];
   /** Séance importée d'où vient ce débrief. */
   workoutId?: string;
+  /** Match (adversaire, score, moment clé). */
+  match?: MatchInfo;
 }
 
 /** Séance d'entraînement sportif, saisie à la main ou importée (Garmin). */
@@ -125,6 +156,8 @@ export interface State {
   ambient?: AmbientKind;
   reminders?: ReminderSettings;
   workouts?: Workout[];
+  /** Historique de matchs importé de Squashnet. */
+  squashnet?: { matches: SquashnetMatch[]; importedAt: string };
   /** Liaison intervals.icu : clé API personnelle, heure de la dernière synchro (ms). */
   /** `sports` : sports gardés à l'import (squash par défaut) ; `seen` : sports reçus d'intervals.icu, gardés ou non. */
   intervals?: { apiKey: string; lastSync: number; error?: string; sports?: string[]; seen?: string[] };

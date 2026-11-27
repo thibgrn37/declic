@@ -4,6 +4,8 @@ import { fmtDay, todayKey } from '../state/dates';
 import { useApp } from '../app/ctx';
 import { Header, RefList } from '../components/ui';
 import { RoutineEditor } from './Player';
+import { OpponentSummary } from './Carnet';
+import { findOpponent, opponentCards } from '../engine/opponents';
 
 function protocol(cd: number): [string, string] {
   if (cd === 0) return ['Jour J', 'Routine d’avant-compétition, respiration, mots-clés. Le travail est fait : fais confiance à ta préparation.'];
@@ -22,6 +24,9 @@ export function JourJ() {
   const [date, setDate] = useState('');
   const [done, setDone] = useState<number[]>([]);
   const r = s.personal.routine;
+  const [opp, setOpp] = useState('');
+  const oppCard = opp.trim().length > 2 ? findOpponent(s, opp) : undefined;
+  const oppNames = opponentCards(s).map((c) => c.name);
 
   return (
     <>
@@ -50,6 +55,14 @@ export function JourJ() {
           <div><h3>{protocol(cd)[0]}</h3><p className="small muted">{protocol(cd)[1]}</p></div>
         </div>
       )}
+
+      <div className="card">
+        <h2>Prochain adversaire</h2>
+        <p className="small muted">Tape son nom : si tu l’as déjà joué, Déclic te rappelle ce qui s’était passé.</p>
+        <label className="field">Adversaire<input type="text" list="jjOpp" value={opp} maxLength={60} onChange={(e) => setOpp(e.target.value)} placeholder="Nom Prénom" /></label>
+        <datalist id="jjOpp">{oppNames.map((n) => <option key={n} value={n} />)}</datalist>
+        {oppCard ? <OpponentSummary c={oppCard} /> : opp.trim().length > 2 && <p className="small muted">Pas encore de match face à cet adversaire dans ton carnet. Après le match, note-le dans un débrief.</p>}
+      </div>
 
       <div className="card">
         <h2>Ma routine</h2>

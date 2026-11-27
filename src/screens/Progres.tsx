@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BADGES, latestAssessment } from '../engine/engine';
-import { addDays, fmtDay, mondayOf, todayKey } from '../state/dates';
+import { addDays, fmtDay, mondayOf, parseKey, todayKey } from '../state/dates';
+import { rankHistory } from '../engine/squashnet';
 import { freshState } from '../state/store';
 import type { Profile } from '../state/types';
 import { useApp } from '../app/ctx';
@@ -15,6 +16,43 @@ const STATUS: Record<string, string> = {
   chargement: 'Chargement…', compte: 'Enregistré dans ton compte', appareil: 'Enregistré sur cet appareil',
   erreur: 'Non enregistré dans le compte, gardé sur cet appareil', enregistrement: 'Enregistrement…',
 };
+
+/** Rang national Squashnet au fil des matchs (échelle logarithmique : monter de 5000 à 400 compte autant que de 400 à 30). */
+function RankChart() {
+  const { s } = useApp();
+  const pts = rankHistory(s.squashnet?.matches || []);
+  if (pts.length < 2) return null;
+  const W = 340, H = 140, l = 38, r = 10, top = 10, b = 22;
+  const lo = Math.log(Math.min(...pts.map((p) => p.rank))), hi = Math.log(Math.max(...pts.map((p) => p.rank)));
+  const t0 = parseKey(pts[0].date).getTime(), t1 = parseKey(pts[pts.length - 1].date).getTime();
+  const x = (d: string) => l + ((parseKey(d).getTime() - t0) / Math.max(1, t1 - t0)) * (W - l - r);
+  const y = (rank: number) => top + ((Math.log(rank) - lo) / Math.max(0.01, hi - lo)) * (H - top - b);
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.date).toFixed(1)} ${y(p.rank).toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+  const ticks = [...new Set([Math.min(...pts.map((p) => p.rank)), Math.round(Math.exp((lo + hi) / 2)), Math.max(...pts.map((p) => p.rank))])];
+  // Saison sportive : de septembre à août.
+  const season = (k: string) => (+k.slice(5, 7) >= 9 ? +k.slice(0, 4) : +k.slice(0, 4) - 1);
+  const cur = season(todayKey());
+  const rec = (yr: number) => {
+    const list = (s.squashnet?.matches || []).filter((m) => season(m.date) === yr && !m.special);
+    const w = list.filter((m) => m.games.filter(([a, c]) => a > c).length > m.games.filter(([a, c]) => c > a).length).length;
+    return { w, l: list.length - w };
+  };
+  const now = rec(cur), prev = rec(cur - 1);
+  return (
+    <div className="card">
+      <div className="row between"><h2>Classement squash</h2><span className="small muted">{last.cls} · {last.rank}e</span></div>
+      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Rang Squashnet de ${pts[0].rank} à ${last.rank}`}>
+        {ticks.map((v) => <g key={v}><line x1={l} x2={W - r} y1={y(v)} y2={y(v)} stroke="var(--line)" /><text x={l - 6} y={y(v) + 3} textAnchor="end">{v}</text></g>)}
+        <text x={l} y={H - 6}>{pts[0].date.slice(0, 4)}</text>
+        <text x={W - r} y={H - 6} textAnchor="end">{last.date.slice(0, 4)}</text>
+        <path d={d} fill="none" stroke="var(--accent)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={x(last.date)} cy={y(last.rank)} r="3.5" fill="var(--accent)" />
+      </svg>
+      <p className="small muted">Plus la courbe monte, meilleur est ton rang. Saison {cur}-{cur + 1} : {now.w} victoires, {now.l} défaites{prev.w + prev.l ? ` (saison précédente : ${prev.w} V, ${prev.l} D)` : ''}.</p>
+    </div>
+  );
+}
 
 function CheckinChart() {
   const { s } = useApp();
@@ -99,6 +137,7 @@ export function Progres() {
           <button className="btn ghost small" onClick={app.startReassess}>Refaire le bilan</button>
         </div>
       )}
+      <RankChart />
       <div className="card">
         <div className="row between"><h2>Régularité</h2><span className="small muted">objectif : {s.profile?.perWeek} par semaine</span></div>
         <WeeksChart />
