@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Ctx, type AppCtx, type PlayRequest, type Tab } from './app/ctx';
 import { Icon } from './components/ui';
 import { ensureWeek } from './engine/engine';
+import { syncComps } from './engine/comps';
 import { DEFAULT_VOICE, Voice, type ClaudeTts } from './audio/voice';
 import { appStore, freshState, type SaveStatus } from './state/store';
 import { cloudConfigured } from './state/cloud';
@@ -64,6 +65,9 @@ export default function App() {
 
   // Le plan de la semaine est figé dès qu'il est créé : on l'enregistre.
   const s = ref.current;
+  // Un tournoi passé laisse la place au suivant : le protocole J-7 s'enchaîne.
+  // Pas d'enregistrement ici (la synchro comparerait des dates d'édition) : la prochaine modification enregistre.
+  if (s.profile) syncComps(s.profile);
   useEffect(() => {
     if (s.profile && s.assessments.length) {
       const before = Object.keys(s.plans).length;
