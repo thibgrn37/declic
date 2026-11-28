@@ -1,3 +1,5 @@
+import { SCENARIO_MIN_LEVEL, playsSquash, scenarioForTurning } from '../content/scenarios';
+import { TURNING } from './opponents';
 import { hardTraining } from './training';
 import { ITEMS } from '../content/assessment';
 import { SKILLS, TECHNIQUES, TECH_BY_ID, type SkillKey } from '../content/techniques';
@@ -176,6 +178,8 @@ export interface Suggestion {
   title: string;
   reason: string;
   slotIndex?: number;
+  /** Scénario d'imagerie squash à jouer (techId 'imagerie'). */
+  scenario?: string;
   alternative?: { techId: string; slotIndex: number };
 }
 
@@ -233,11 +237,33 @@ export function suggestToday(s: State, day = todayKey()): Suggestion | null {
       };
     }
   }
+  const sc = doneToday ? undefined : matchScenario(s, day);
+  if (sc) {
+    return {
+      techId: 'imagerie', level: levelOf(s, 'imagerie'), source: 'libre', title: 'Après ton match', scenario: sc.scenario.id,
+      reason: `Ton match du ${sc.date.split('-').reverse().slice(0, 2).join('/')} a basculé sur : ${TURNING[sc.scenario.turning].toLowerCase()}. On rejoue ce moment en imagerie pour que la prochaine fois, tu le connaisses déjà.`,
+      alternative: nextIdx >= 0 ? { techId: plan.slots[nextIdx].techId, slotIndex: nextIdx } : undefined,
+    };
+  }
   if (nextIdx >= 0) {
     const sl = plan.slots[nextIdx];
     return { techId: sl.techId, level: levelOf(s, sl.techId), source: 'plan', title: doneToday ? 'Séance suivante' : 'Séance du jour', reason: sl.reason, slotIndex: nextIdx };
   }
   return null;
+}
+
+/** Débrief de match récent (3 jours) dont le moment clé a un scénario squash pas encore rejoué depuis. */
+export function matchScenario(s: State, day = todayKey()) {
+  if (!playsSquash(s) || levelOf(s, 'imagerie') < SCENARIO_MIN_LEVEL) return undefined;
+  for (const d of [...s.debriefs].reverse()) {
+    const age = diffDays(d.date, day);
+    if (age < 0 || age > 3) continue;
+    const scenario = scenarioForTurning(d.match?.turning);
+    if (!scenario) continue;
+    if (s.sessions.some((x) => x.scenario === scenario.id && x.date >= d.date)) continue;
+    return { scenario, date: d.date };
+  }
+  return undefined;
 }
 
 /* ---------------- Adaptation ---------------- */

@@ -3,6 +3,7 @@ import { SKILLS, TECHNIQUES, TECH_BY_ID } from '../content/techniques';
 import { PHASES, levelOf, phaseOf, priorities, programWeek } from '../engine/engine';
 import { useApp } from '../app/ctx';
 import { EvidenceTag, Header, RefList } from '../components/ui';
+import { SCENARIO_BY_ID, SCENARIO_MIN_LEVEL, SQUASH_SCENARIOS, playsSquash } from '../content/scenarios';
 
 export function Programme() {
   const { s } = useApp();
@@ -63,15 +64,41 @@ function TechDetail({ id, onBack }: { id: string; onBack: () => void }) {
         ))}
         <p className="small muted">Tu passes au niveau suivant après deux séances notées 4 ou 5. Deux séances notées 1 ou 2 te font consolider le niveau précédent.</p>
       </div>
+      {id === 'imagerie' && playsSquash(s) && <SquashScenarios />}
       {logs.length > 0 && (
         <div className="card">
           <h3>Tes dernières séances</h3>
           {logs.map((x, k) => (
-            <div key={k} className="row between small"><span>{x.date.split('-').reverse().slice(0, 2).join('/')} · niveau {x.level}</span><span className="muted">ressenti {x.rating}/5 · utilité {x.useful}/5</span></div>
+            <div key={k} className="row between small"><span>{x.date.split('-').reverse().slice(0, 2).join('/')} · {x.scenario && SCENARIO_BY_ID[x.scenario] ? SCENARIO_BY_ID[x.scenario].name : `niveau ${x.level}`}</span><span className="muted">ressenti {x.rating}/5 · utilité {x.useful}/5</span></div>
           ))}
         </div>
       )}
       <div className="card"><h3>Sources</h3><RefList ids={t.refs} /></div>
     </>
+  );
+}
+
+/** Scénarios d'imagerie propres au squash : des moments de match difficiles, répétés à l'avance. */
+function SquashScenarios() {
+  const { s, play } = useApp();
+  const lv = levelOf(s, 'imagerie');
+  const open = lv >= SCENARIO_MIN_LEVEL;
+  return (
+    <div className="card">
+      <h3>Scénarios squash</h3>
+      <p className="small muted">Les moments où un match bascule, vécus à l’avance : l’émotion qui monte, puis ta réponse. Après un débrief de match, Déclic te propose le scénario qui correspond au moment clé.</p>
+      {SQUASH_SCENARIOS.map((x) => {
+        const n = s.sessions.filter((y) => y.scenario === x.id).length;
+        return (
+          <div className="lvl-row" key={x.id}>
+            <div><b>{x.name}</b><br /><span className="small muted">{x.situation} · {x.min} min{n ? ` · fait ${n} fois` : ''}</span></div>
+            {open
+              ? <button className="btn soft small" onClick={() => play({ techId: 'imagerie', level: lv, source: 'libre', scenario: x.id })}>S’entraîner</button>
+              : <span className="small muted">À débloquer</span>}
+          </div>
+        );
+      })}
+      {!open && <p className="small muted">Les scénarios s’ouvrent au niveau 2 de l’imagerie, quand tes images sont assez nettes.</p>}
+    </div>
   );
 }
