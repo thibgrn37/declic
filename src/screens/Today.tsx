@@ -7,6 +7,7 @@ import { useApp } from '../app/ctx';
 import { Coach, Dots, EvidenceTag, Header } from '../components/ui';
 import { fmtDuration, pendingDebriefs } from '../engine/training';
 import { openCarnetOn } from './Carnet';
+import { SCENARIO_BY_ID } from '../content/scenarios';
 
 const CI_ROWS: [keyof Checkin, string, string][] = [
   ['mood', 'Humeur', '1 = au plus bas, 5 = au top'],
@@ -111,15 +112,18 @@ function SuggestionCard() {
   const sug = suggestToday(s)!;
   const tech = TECH_BY_ID[sug.techId];
   const lv = tech.levels[sug.level - 1];
+  const sc = sug.scenario ? SCENARIO_BY_ID[sug.scenario] : undefined;
   return (
     <div className="card today">
-      <span className="eyebrow">{sug.title} · {lv.min} min</span>
+      <span className="eyebrow">{sug.title} · {sc ? sc.min : lv.min} min</span>
       <h2>{tech.name}</h2>
-      <p><b>Niveau {lv.n} : {lv.name}.</b> {lv.goal}</p>
+      {sc
+        ? <p><b>Scénario squash : {sc.name}.</b> {sc.goal}</p>
+        : <p><b>Niveau {lv.n} : {lv.name}.</b> {lv.goal}</p>}
       <p className="small">{sug.reason}</p>
       <div className="row between">
         <div className="row" style={{ gap: 6 }}><EvidenceTag level={tech.evidence} /></div>
-        <button className="btn" onClick={() => play({ techId: sug.techId, level: sug.level, source: sug.source, slotIndex: sug.slotIndex })}>Commencer</button>
+        <button className="btn" onClick={() => play({ techId: sug.techId, level: sug.level, source: sug.source, slotIndex: sug.slotIndex, scenario: sug.scenario })}>Commencer</button>
       </div>
       {sug.alternative && (
         <button className="btn ghost small" onClick={() => play({ techId: sug.alternative!.techId, level: levelOf(s, sug.alternative!.techId), source: 'plan', slotIndex: sug.alternative!.slotIndex })}>

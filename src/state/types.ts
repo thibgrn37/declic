@@ -42,6 +42,8 @@ export interface SessionLog {
   useful: number; // utilité perçue, 1 à 5
   note: string;
   source: 'plan' | 'jourj' | 'allegee' | 'libre';
+  /** Scénario d'imagerie squash joué (séance d'imagerie). */
+  scenario?: string;
 }
 
 export interface Checkin {

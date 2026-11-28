@@ -98,7 +98,7 @@ export const TECHNIQUES: Technique[] = [
     name: 'Imagerie mentale',
     skills: ['confiance', 'concentration', 'objectifs'],
     evidence: 'solide',
-    refs: ['liu2025', 'holmes2001', 'simonsmeier2018'],
+    refs: ['liu2025', 'holmes2001', 'simonsmeier2018', 'williams2010'],
     why: 'Imaginer un geste active en partie les mêmes circuits que l’exécuter. Les méta-analyses montrent un effet moyen sur la performance, surtout avec environ 10 minutes, 3 fois par semaine, et une imagerie proche du réel (méthode PETTLEP).',
     rating: 'Netteté des images et des sensations',
     levels: [

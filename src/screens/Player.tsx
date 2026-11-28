@@ -5,6 +5,7 @@ import { todayKey } from '../state/dates';
 import { useApp, type PlayRequest } from '../app/ctx';
 import { Choice, Dots, EvidenceTag, fill } from '../components/ui';
 import { AMBIENTS, ambient } from '../audio/ambient';
+import { SCENARIO_BY_ID } from '../content/scenarios';
 
 const ROUTINE_IDEAS = ['Expiration longue', 'Dire mon mot-clé', 'Voir le geste réussi', 'Regard sur un point précis', 'Geste déclencheur (taper la raquette, ajuster le gant…)'];
 
@@ -16,8 +17,9 @@ export function Player({ req, onClose }: { req: PlayRequest; onClose: () => void
   const isUrgence = req.techId === 'urgence';
   const tech = isUrgence ? null : TECH_BY_ID[req.techId];
   const level = tech ? tech.levels[Math.min(req.level, tech.levels.length) - 1] : null;
+  const scenario = req.scenario ? SCENARIO_BY_ID[req.scenario] : undefined;
   const steps: Step[] = useMemo(
-    () => (isUrgence ? URGENCE_STEPS : level!.steps({ sportType: s.profile?.sportType || 'collectif' })),
+    () => (isUrgence ? URGENCE_STEPS : scenario ? scenario.steps : level!.steps({ sportType: s.profile?.sportType || 'collectif' })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [req.techId, req.level],
   );
@@ -59,7 +61,7 @@ export function Player({ req, onClose }: { req: PlayRequest; onClose: () => void
     let out: Outcome = { message: '', levelUp: false, badges: [] };
     update((st) => {
       const t = todayKey();
-      st.sessions.push({ date: t, techId: tech!.id, level: req.level, rating, useful, note: note.trim().slice(0, 500), source: req.source });
+      st.sessions.push({ date: t, techId: tech!.id, level: req.level, rating, useful, note: note.trim().slice(0, 500), source: req.source, ...(scenario ? { scenario: scenario.id } : {}) });
       st.days[t] = (st.days[t] || 0) + 1;
       const plan = ensureWeek(st, t);
       // Une séance coche le prochain créneau de la semaine qui porte la même technique.
@@ -67,6 +69,14 @@ export function Player({ req, onClose }: { req: PlayRequest; onClose: () => void
         ? req.slotIndex
         : plan.slots.findIndex((x) => !x.doneDate && x.techId === tech!.id);
       if (idx >= 0 && req.source !== 'allegee') plan.slots[idx].doneDate = t;
+      if (scenario) {
+        // Un scénario compte dans la dose d'imagerie mais ne change pas le niveau de la technique.
+        const message = rating <= 2
+          ? 'Images encore floues ou moment dur à vivre : c’est normal au début. Le refaire avant ton prochain match le rendra plus familier.'
+          : 'Scénario enregistré. Il compte dans ta dose d’imagerie de la semaine. Refais-le la veille d’un match important.';
+        out = { message, levelUp: false, badges: checkBadges(st) };
+        return;
+      }
       const r = adapt(st, tech!.id, req.level, rating);
       out = { message: r.message, levelUp: r.newLevel > r.oldLevel, badges: checkBadges(st) };
     });
@@ -79,12 +89,13 @@ export function Player({ req, onClose }: { req: PlayRequest; onClose: () => void
   if (phase === 'intro' && tech && level) {
     return (
       <div className="player"><div className="in">
-        <div className="row between"><span className="eyebrow">{tech.name} · niveau {level.n}/{tech.levels.length}</span><button className="btn ghost small" onClick={close}>Fermer</button></div>
+        <div className="row between"><span className="eyebrow">{scenario ? `${tech.name} · scénario squash` : `${tech.name} · niveau ${level.n}/${tech.levels.length}`}</span><button className="btn ghost small" onClick={close}>Fermer</button></div>
         <div className="stage">
-          <h1>{level.name}</h1>
-          <p className="muted" style={{ maxWidth: '36ch' }}>{level.goal}</p>
-          <div className="row" style={{ justifyContent: 'center' }}><EvidenceTag level={tech.evidence} /><span className="tag plain">{level.min} min</span></div>
-          <p className="small" style={{ maxWidth: '40ch' }}>{tech.why}</p>
+          <h1>{scenario ? scenario.name : level.name}</h1>
+          {scenario && <p style={{ maxWidth: '36ch' }}><b>{scenario.situation}</b></p>}
+          <p className="muted" style={{ maxWidth: '36ch' }}>{scenario ? scenario.goal : level.goal}</p>
+          <div className="row" style={{ justifyContent: 'center' }}><EvidenceTag level={tech.evidence} /><span className="tag plain">{scenario ? scenario.min : level.min} min</span></div>
+          <p className="small" style={{ maxWidth: '40ch' }}>{scenario ? 'Tu vis le moment difficile, l’émotion qui monte, puis tu te vois appliquer tes outils et rejouer proprement. Répété à l’avance, ce moment devient un défi connu plutôt qu’une menace.' : tech.why}</p>
           {app.speak && (
             <label className="row small" style={{ justifyContent: 'center' }}>
               <input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} /> Guidage vocal (pour garder les yeux fermés)
@@ -125,7 +136,7 @@ export function Player({ req, onClose }: { req: PlayRequest; onClose: () => void
         <div className="stage" style={{ alignItems: 'stretch', textAlign: 'left' }}>
           <div className="result card">
             <span className="eyebrow">{isUrgence ? 'Respiration d’urgence' : 'Séance terminée'}</span>
-            {outcome.levelUp && tech ? <div className="levelup">Niveau {newLevel} débloqué</div> : <h2>{tech ? tech.name : 'C’est fait'}</h2>}
+            {outcome.levelUp && tech ? <div className="levelup">Niveau {newLevel} débloqué</div> : <h2>{scenario ? scenario.name : tech ? tech.name : 'C’est fait'}</h2>}
             <p>{outcome.message}</p>
             {outcome.badges.map((b) => <p key={b}><span className="tag prometteur">Badge</span> {b}</p>)}
             <button className="btn wide" onClick={close}>Continuer</button>
@@ -137,7 +148,7 @@ export function Player({ req, onClose }: { req: PlayRequest; onClose: () => void
 
   return (
     <div className="player"><div className="in">
-      <div className="row between"><span className="eyebrow">{tech ? tech.name : 'Respiration d’urgence'}</span><button className="btn ghost small" onClick={close}>Arrêter</button></div>
+      <div className="row between"><span className="eyebrow">{scenario ? scenario.name : tech ? tech.name : 'Respiration d’urgence'}</span><button className="btn ghost small" onClick={close}>Arrêter</button></div>
       <div className="progress">{steps.map((_, k) => <span key={k} className={k <= i ? 'd' : ''} />)}</div>
       <div className="stage">
         <StepView key={i} step={steps[i]} onNext={next} />

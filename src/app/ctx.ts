@@ -10,6 +10,8 @@ export interface PlayRequest {
   level: number;
   source: 'plan' | 'jourj' | 'allegee' | 'libre';
   slotIndex?: number;
+  /** Scénario d'imagerie squash (avec techId 'imagerie'). */
+  scenario?: string;
 }
 
 export interface AppCtx {

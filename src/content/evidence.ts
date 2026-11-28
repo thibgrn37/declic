@@ -47,6 +47,12 @@ export const REFERENCES: Record<string, Reference> = {
     finding: 'Environ 800 sportifs, 15 sports : une routine avant le geste améliore la performance, en entraînement comme sous pression, quels que soient l’âge, le niveau ou la complexité de la routine.',
     url: 'https://www.eurekalert.org/news-releases/934597',
   },
+  williams2010: {
+    id: 'williams2010',
+    short: 'Williams et al., 2010',
+    full: 'Williams, S. E., Cumming, J., & Balanos, G. M. (2010). The use of imagery to manipulate challenge and threat appraisal states in athletes. Journal of Sport & Exercise Psychology, 32(3), 339–358. doi:10.1123/jsep.32.3.339',
+    finding: 'Des sportifs imaginent une situation de compétition stressante. Quand le script inclut leurs ressources pour y faire face, ils la vivent comme un défi plutôt qu’une menace, avec une réponse cardiovasculaire plus favorable. C’est le principe des scénarios de match difficiles.',
+  },
   williamson2022: {
     id: 'williamson2022',
     short: 'Williamson et al., 2022',
