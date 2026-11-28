@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { addDays, parseKey, todayKey } from '../state/dates';
 import type { State } from '../state/types';
 import { useApp } from '../app/ctx';
+import { upcomingComps } from '../engine/comps';
 
 export interface ReminderSettings {
   time: string; // HH:MM
@@ -37,11 +38,10 @@ export function buildIcs(s: State, r: ReminderSettings): string {
     events.push(event('seance', icsDate(t, r.time), 10, 'Séance Déclic', 'Ta séance de préparation mentale du jour t’attend dans Déclic.',
       `RRULE:FREQ=WEEKLY;BYDAY=${r.days.map((d) => ICS_DAYS[d - 1]).join(',')}`));
   }
-  const p = s.profile;
-  if (p?.compDate && p.compDate >= t) {
-    const name = p.compName || 'ta compétition';
-    events.push(event('veille-' + p.compDate, icsDate(addDays(p.compDate, -1), '20:00'), 10, `Veille de ${name} : visualisation`, 'Une visualisation courte de ta compétition, sac prêt, coucher habituel.'));
-    events.push(event('jourj-' + p.compDate, icsDate(p.compDate, '08:00'), 5, `Jour J : ${name}`, 'Respiration lente et routine d’avant-match. Ta respiration d’urgence est dans l’onglet Jour J.'));
+  for (const c of upcomingComps(s.profile, t)) {
+    const name = c.name || 'ta compétition';
+    events.push(event('veille-' + c.date, icsDate(addDays(c.date, -1), '20:00'), 10, `Veille de ${name} : visualisation`, 'Une visualisation courte de ta compétition, sac prêt, coucher habituel.'));
+    events.push(event('jourj-' + c.date, icsDate(c.date, '08:00'), 5, `Jour J : ${name}`, 'Respiration lente et routine d’avant-match. Ta respiration d’urgence est dans l’onglet Jour J.'));
   }
   return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Declic//FR', 'CALSCALE:GREGORIAN', ...events, 'END:VCALENDAR', ''].join('\r\n');
 }
@@ -64,7 +64,8 @@ export function RemindersCard() {
   const r = s.reminders || DEFAULT_REMINDERS;
   const [msg, setMsg] = useState('');
   const set = (patch: Partial<ReminderSettings>) => { setMsg(''); update((x) => { x.reminders = { ...r, ...patch }; }); };
-  const hasComp = !!(s.profile?.compDate && s.profile.compDate >= todayKey());
+  const comps = upcomingComps(s.profile);
+  const hasComp = comps.length > 0;
   return (
     <div className="card">
       <h2>Rappels</h2>
@@ -78,7 +79,7 @@ export function RemindersCard() {
         </div>
       </div>
       <label className="field">Heure<input type="time" id="remTime" value={r.time} onChange={(e) => set({ time: e.target.value || '18:30' })} style={{ maxWidth: 160, border: '1px solid var(--line)', background: 'var(--surface-2)', borderRadius: 10, padding: '10px 12px' }} /></label>
-      <p className="small">{hasComp ? `Le fichier ajoute aussi la veille de ${s.profile!.compName || 'ta compétition'} (20 h, visualisation) et le Jour J (8 h, respiration et routine).` : 'Indique ta prochaine compétition dans l’onglet Jour J pour ajouter aussi les rappels de la veille et du Jour J.'}</p>
+      <p className="small">{hasComp ? `Le fichier ajoute aussi la veille (20 h, visualisation) et le Jour J (8 h, respiration et routine) de ${comps.length > 1 ? `tes ${comps.length} tournois` : comps[0].name || 'ta compétition'}.` : 'Indique ta prochaine compétition dans l’onglet Jour J pour ajouter aussi les rappels de la veille et du Jour J.'}</p>
       <button className="btn" disabled={!r.days.length && !hasComp} onClick={async () => {
         const res = await saveFile('declic-rappels.ics', buildIcs(s, r));
         setMsg(res === 'ok' ? 'Fichier prêt : ouvre-le pour l’ajouter à ton agenda.' : 'Le téléchargement a été refusé.');

@@ -4,6 +4,7 @@ import { PHASES, compDays, ensureWeek, levelOf, phaseOf, reassessDue, streakInfo
 import { fmtWeekday, mondayOf, todayKey } from '../state/dates';
 import type { Checkin } from '../state/types';
 import { useApp } from '../app/ctx';
+import { recentPastComp } from '../engine/comps';
 import { Coach, Dots, EvidenceTag, Header } from '../components/ui';
 import { fmtDuration, pendingDebriefs } from '../engine/training';
 import { openCarnetOn } from './Carnet';
@@ -26,6 +27,7 @@ export function Today() {
   const st = streakInfo(s);
   const phase = phaseOf(plan.programWeek);
   const cd = compDays(s.profile, t);
+  const justDone = recentPastComp(s.profile, t, 7);
   const doneCount = plan.slots.filter((x) => x.doneDate).length;
   const goalsSet = s.personal.goals.process.some((x) => x.trim());
   const reviewedThisWeek = s.personal.goalReviews.some((r) => mondayOf(r.date) === mondayOf(t));
@@ -34,7 +36,7 @@ export function Today() {
   let coach: [string, string];
   if (!ci) coach = ['Check-in', `${name}comment tu te sens aujourd’hui ? Ton état du jour ajuste la séance proposée.`];
   else if (sug?.source === 'allegee') coach = ['Séance allégée', 'Journée chargée. Une régulation courte vaut mieux qu’une séance bâclée.'];
-  else if (cd !== null && cd >= 0 && cd <= 7) coach = [cd === 0 ? 'Jour J' : `J-${cd}`, `Protocole compétition activé pour ${s.profile?.compName || 'ta compétition'}.`];
+  else if (cd !== null && cd >= 0 && cd <= 7) coach = [cd === 0 ? 'Jour J' : `J-${cd}`, `Protocole compétition activé pour ${s.profile?.compName || 'ta compétition'}${justDone ? `, dans la foulée de ${justDone.name || 'ton dernier tournoi'}` : ''}.`];
   else if (!sug) coach = ['Semaine bouclée', 'Toutes tes séances de la semaine sont faites. Le repos fait aussi partie de l’entraînement.'];
   else coach = [`Semaine ${plan.programWeek} · ${PHASES[phase].name}`, PHASES[phase].text];
 

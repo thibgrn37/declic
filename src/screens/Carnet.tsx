@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ISSUES, compDays } from '../engine/engine';
+import { recentPastComp } from '../engine/comps';
 import { detectIssues } from '../engine/debrief';
 import { diffDays, fmtDay, todayKey } from '../state/dates';
 import type { Debrief, IssueKey, TurningKey, Workout } from '../state/types';
@@ -154,7 +155,7 @@ export function Carnet() {
   const [view, setView] = useState<View>(() => { const v = nextView || 'debriefs'; nextView = null; return v; });
   const { s, update } = useApp();
   const cd = compDays(s.profile);
-  const empty = (): Debrief => ({ date: todayKey(), title: cd !== null && cd <= 0 && cd > -4 ? s.profile?.compName || '' : '', kind: 'competition', feel: 0, perf: 0, good: '', bad: '', keep: '', issue: '' });
+  const empty = (): Debrief => ({ date: todayKey(), title: cd !== null && cd <= 0 && cd > -4 ? s.profile?.compName || '' : recentPastComp(s.profile)?.name || '', kind: 'competition', feel: 0, perf: 0, good: '', bad: '', keep: '', issue: '' });
   const [d, setD] = useState<Debrief>(empty);
   const [touchedIssue, setTouchedIssue] = useState(false);
   const [saved, setSaved] = useState('');
