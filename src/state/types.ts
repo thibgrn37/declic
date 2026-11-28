@@ -11,8 +11,16 @@ export interface Profile {
   minutes: 5 | 10 | 15;
   perWeek: 3 | 4 | 5;
   experience: boolean;
+  /** Compétition active (le prochain tournoi du calendrier), tenue à jour par syncComps. */
   compName: string;
   compDate: string;
+  /** Calendrier : tous les tournois prévus. */
+  comps?: Comp[];
+}
+
+export interface Comp {
+  name: string;
+  date: string; // AAAA-MM-JJ
 }
 
 export interface Assessment {

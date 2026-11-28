@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { compDays } from '../engine/engine';
-import { fmtDay, todayKey } from '../state/dates';
+import { diffDays, fmtDay, todayKey } from '../state/dates';
+import { addComp, nextAfterActive, recentPastComp, removeComp, upcomingComps } from '../engine/comps';
 import { useApp } from '../app/ctx';
 import { Header, RefList } from '../components/ui';
 import { RoutineEditor } from './Player';
@@ -20,6 +21,9 @@ export function JourJ() {
   const p = s.profile!;
   const cd = compDays(p);
   const t = todayKey();
+  const upcoming = upcomingComps(p, t);
+  const next = nextAfterActive(p, t);
+  const past = upcoming.length ? recentPastComp(p, t) : null;
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [done, setDone] = useState<number[]>([]);
@@ -37,15 +41,7 @@ export function JourJ() {
         <span><b>Respiration d’urgence</b><span className="small">1 minute, expiration longue, pour faire redescendre la pression</span></span>
       </button>
 
-      {cd === null || cd < 0 ? (
-        <div className="card">
-          <h2>{cd !== null && cd < 0 ? 'Compétition passée' : 'Prochaine compétition'}</h2>
-          <p className="small muted">{cd !== null && cd < 0 ? `${p.compName || 'Ta compétition'} a eu lieu le ${fmtDay(p.compDate)}. Pense à ton débrief dans le Carnet, puis indique la suivante.` : 'Indique ta prochaine échéance : ton programme passera en mode compétition à J-7.'}</p>
-          <label className="field">Nom<input type="text" id="cName" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder="Ex. Régionaux de cross" /></label>
-          <label className="field">Date<input type="date" id="cDate" value={date} min={t} onChange={(e) => setDate(e.target.value)} /></label>
-          <button className="btn" disabled={!date} onClick={() => update((x) => { x.profile!.compName = name.trim(); x.profile!.compDate = date; })}>Enregistrer</button>
-        </div>
-      ) : (
+      {cd !== null && cd >= 0 && (
         <div className="card">
           <span className="eyebrow">{p.compName || 'Compétition'} · {fmtDay(p.compDate)}</span>
           <div className="countdown"><strong className="num">{cd === 0 ? 'J' : `J-${cd}`}</strong><span className="muted">{cd === 0 ? 'C’est aujourd’hui' : 'avant le départ'}</span></div>
@@ -53,8 +49,35 @@ export function JourJ() {
             {Array.from({ length: 8 }, (_, k) => { const j = 7 - k; return <span key={k} className={j === cd ? 'now' : j > cd ? 'past' : ''} />; })}
           </div>
           <div><h3>{protocol(cd)[0]}</h3><p className="small muted">{protocol(cd)[1]}</p></div>
+          {next && diffDays(p.compDate, next.date) <= 7 && (
+            <p className="small">Ensuite : <b>{next.name || 'un autre tournoi'}</b> le {fmtDay(next.date)}. Le protocole J-7 enchaîne dès le lendemain, sans repartir de zéro.</p>
+          )}
         </div>
       )}
+
+      <div className="card">
+        <h2>Mes tournois</h2>
+        {past && <p className="small">{past.name || 'Ton tournoi'} a eu lieu le {fmtDay(past.date)}. Pense à ton débrief dans le Carnet.</p>}
+        {upcoming.length ? (
+          <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 8px' }}>
+            {upcoming.map((c) => {
+              const d = diffDays(t, c.date);
+              return (
+                <li key={c.date + c.name} className="row between" style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+                  <span><b>{c.name || 'Tournoi'}</b><span className="small muted"> · {fmtDay(c.date)} · {d === 0 ? 'aujourd’hui' : `J-${d}`}</span></span>
+                  <button className="btn ghost small" aria-label={`Retirer ${c.name || 'ce tournoi'}`} onClick={() => update((x) => removeComp(x.profile!, c))}>Retirer</button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="small muted">{cd !== null && cd < 0 ? `${p.compName || 'Ta compétition'} a eu lieu le ${fmtDay(p.compDate)}. Pense à ton débrief dans le Carnet, puis indique la suivante.` : 'Indique tes prochains tournois : ton programme passera en mode compétition à J-7 de chacun.'}</p>
+        )}
+        {upcoming.length > 0 && <p className="small muted">Le protocole J-7 suit le prochain tournoi. Une fois passé, il bascule tout seul sur le suivant.</p>}
+        <label className="field">Nom<input type="text" id="cName" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder="Ex. Open de Tours" /></label>
+        <label className="field">Date<input type="date" id="cDate" value={date} min={t} onChange={(e) => setDate(e.target.value)} /></label>
+        <button className="btn" disabled={!date || date < t} onClick={() => { update((x) => addComp(x.profile!, { name, date })); setName(''); setDate(''); }}>Ajouter le tournoi</button>
+      </div>
 
       <div className="card">
         <h2>Prochain adversaire</h2>
